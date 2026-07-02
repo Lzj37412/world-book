@@ -362,6 +362,25 @@
   .start-btn:hover { background: #2ea043; }
   .start-btn:disabled { opacity: .4; cursor: not-allowed; }
 
+  /* 🎮 模式切换 */
+  .mode-toggle {
+    display: flex; gap: 0; margin: 10px 0 4px;
+    border: 1px solid #30363d; border-radius: 8px; overflow: hidden;
+  }
+  .mode-toggle button {
+    flex: 1; padding: 8px; border: none; font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all .2s; font-family: inherit;
+    background: #0d1117; color: #484f58;
+  }
+  .mode-toggle button.active {
+    background: #161b22; color: #c9d1d9;
+  }
+  .mode-toggle button:first-child.active { background: #238636; color: #fff; }
+  .mode-toggle button:last-child.active { background: #da3633; color: #fff; }
+  .mode-hint {
+    text-align: center; font-size: 10px; color: #484f58; margin-bottom: 8px;
+  }
+
     /* 💾 存档弹窗 */
   .save-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
   .save-slot {
@@ -407,6 +426,12 @@
       <label>🏁 开局场景</label>
       <textarea id="sw-scene" placeholder="在出租屋醒来 / 穿越到陌生世界…"></textarea>
     </div>
+
+    <div class="mode-toggle">
+      <button id="mode-free" class="active">🎮 自由模式</button>
+      <button id="mode-real">⚡ 真实模式</button>
+    </div>
+    <div class="mode-hint" id="mode-hint">AI 配合玩家，世界围绕你的体验展开</div>
 
     <button class="start-btn" id="btn-create-world">✨ 创造世界</button>
     <button class="start-btn" id="btn-start-settings" onclick="openSettings()" style="background:#21262d;color:#8b949e;margin-top:6px;border:1px solid #30363d;">⚙️ API 设置</button>
@@ -546,10 +571,46 @@ function mockAI(input, memory) {
   return { text: narrative, state: null };
 }
 
-// ---------- 系统 Prompt（GM 角色） ----------
+// ---------- 真实模式规则 ----------
+
+function realModeRules() {
+  return `
+
+【真实模式｜Simulation Mode】
+
+这是一个独立运行的世界模拟。AI的职责是如实生成世界发生的结果，而不是优化体验或引导玩家。
+
+1. 世界独立于玩家意志运行。NPC拥有自主行为逻辑，事件可以不利于玩家，世界不会因为玩家体验而调整结果。
+
+2. 所有结果必须符合因果：行为→结果，冲突→后果，选择→变化。禁止无原因的状态变化和突然的剧情修正。但不限制结果类型（失败、成功、死亡、混乱都允许）。
+
+3. 玩家不是被保护对象。可以失败、被拒绝、错过事件、受到严重后果。但玩家仍然是世界的一部分。
+
+4. 一旦事件发生，不允许为了剧情体验撤销、自动补偿或重写历史。世界只会继续发展，不会修复体验。
+
+5. 真实模式允许死亡、失败、路线终止。但必须来自世界因果，不是规则强制。
+
+6. AI不得推荐最佳行动、提示正确选择或暗示玩家应该怎么做。只允许描述世界发生了什么和玩家行为的结果。
+
+7. STATE必须反映当前世界真实状态，与叙事一致。新状态覆盖旧状态，未出现即视为不存在。
+
+8. 真实模式不会限制AI内容生成。AI仍然可以自由生成剧情、NPC行为、世界规则演化、新系统。规则只约束真实性，不约束内容方向。`;
+}
+
+// ---------- 获取当前模式 ----------
+
+function getMode() {
+  return localStorage.getItem('ai_mode') || 'free';
+}
+
+function setMode(mode) {
+  localStorage.setItem('ai_mode', mode);
+}
+
+// ---------- 系统 Prompt ----------
 
 function systemPrompt() {
-  return `你是一个持续运行的世界模拟GM。
+  const base = `你是一个持续运行的世界模拟GM。
 
 你的职责是模拟一个真实运转的世界，而不是编写小说或设计游戏任务。
 
@@ -622,6 +683,11 @@ STATE 是"当前世界完整快照"，不是增量更新。
 - 只要未来可能影响世界连续性的信息，都应当记录
 
 ⚠️ 这条最关键：STATE 必须是完整的。宁可多写，不要漏写。`;
+
+  if (getMode() === 'real') {
+    return base + realModeRules();
+  }
+  return base;
 }
 
 // ---------- 构建消息体（含 Memory 回填） ----------
@@ -1252,6 +1318,26 @@ function init() {
   document.getElementById('settings-cancel').addEventListener('click', closeSettings);
   document.getElementById('settings-modal').addEventListener('click', (e) => {
     if (e.target === e.currentTarget) closeSettings();
+  });
+
+  // 模式切换
+  const savedMode = getMode();
+  if (savedMode === 'real') {
+    document.getElementById('mode-free').classList.remove('active');
+    document.getElementById('mode-real').classList.add('active');
+    document.getElementById('mode-hint').textContent = '⚡ 世界按因果运行，不照顾玩家体验';
+  }
+  document.getElementById('mode-free').addEventListener('click', () => {
+    setMode('free');
+    document.getElementById('mode-free').classList.add('active');
+    document.getElementById('mode-real').classList.remove('active');
+    document.getElementById('mode-hint').textContent = 'AI 配合玩家，世界围绕你的体验展开';
+  });
+  document.getElementById('mode-real').addEventListener('click', () => {
+    setMode('real');
+    document.getElementById('mode-real').classList.add('active');
+    document.getElementById('mode-free').classList.remove('active');
+    document.getElementById('mode-hint').textContent = '⚡ 世界按因果运行，不照顾玩家体验';
   });
 
   // 存档读档
