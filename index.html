@@ -747,17 +747,22 @@ function parseAIOutput(text) {
     } catch (e) {}
   }
 
-  // ② 降级：找末尾的 {...} 对象（可能跨行）
-  const jsonMatch = text.match(/\{[\s\S]*\}[ \t]*$/);
-  if (jsonMatch) {
-    try {
-      state = JSON.parse(jsonMatch[0]);
-      narrative = text.substring(0, jsonMatch.index).trim();
-      return { narrative, state };
-    } catch (e) {}
+  // ② 降级：从末尾找最后一个 {...} JSON 对象
+  // 用 lastIndexOf 精确定位，避免贪心匹配灾难
+  const lastClose = text.lastIndexOf('}');
+  if (lastClose > 0) {
+    const lastOpen = text.lastIndexOf('{', lastClose);
+    if (lastOpen >= 0) {
+      const candidate = text.substring(lastOpen, lastClose + 1);
+      try {
+        state = JSON.parse(candidate);
+        narrative = text.substring(0, lastOpen).trim();
+        return { narrative, state };
+      } catch (e) {}
+    }
   }
 
-  // ③ 都没找到，state = null，全部当叙事
+  // ③ 都没找到，state = null
   return { narrative, state };
 }
 
