@@ -55,7 +55,8 @@ async function callOpenAI(systemPrompt, userPrompt, config) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 60000);
 
-  const res = await fetch(`${endpoint}/v1/chat/completions`, {
+  // endpoint 已经是完整 URL（含 /v1/chat/completions）
+  const res = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
