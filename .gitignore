@@ -1,0 +1,7 @@
+.git
+*.bak
+*.bak.*
+_replace.js
+_claude_*
+.claude/
+.remember/
