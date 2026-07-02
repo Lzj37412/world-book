@@ -242,18 +242,7 @@
   .journal-card.diff-card { border-color: #1f3a3f; }
   .journal-card.diff-card .jc-title { color: #58a6ff; }
   .journal-card.diff-card .jc-item { padding: 2px 0; }
-  }
-  .mem-item {
-    color: #c9d1d9;
-    position: relative;
-    padding-left: 14px;
-  }
-  .mem-item::before {
-    content: '·';
-    position: absolute;
-    left: 0;
-    color: #484f58;
-  }
+
   #memory-turn {
     padding: 8px 16px;
     border-top: 1px solid #30363d;
@@ -361,6 +350,22 @@
   }
   .start-btn:hover { background: #2ea043; }
   .start-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* 📱 手机自适应 */
+  @media (max-width: 720px) {
+    #app { flex-direction: column; width: 100%; height: 100dvh; }
+    #chat-area { border-radius: 0; border: none; }
+    #memory-area { width: 100%; max-height: 40vh; border-radius: 0; border: none; border-top: 1px solid #30363d; }
+    #chat-header { padding: 6px 10px; font-size: 12px; }
+    #chat-log { padding: 10px; }
+    #user-input { font-size: 16px; }
+    .start-card { padding: 16px; width: 100%; }
+    .start-card .field textarea { min-height: 30px; }
+    .msg.narrator { font-size: 14px; }
+    #memory-view { padding: 8px; }
+    .journal-card .jc-header { padding: 6px 8px; }
+    .journal-card .jc-body { padding: 0 8px 6px; }
+  }
 
   /* 🎮 模式切换 */
   .mode-toggle {
