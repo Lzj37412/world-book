@@ -673,6 +673,7 @@ function systemPrompt() {
 
 ① 事实层（不可编造，必须准确）
 角色名单、阵营/物种构成、地理版图、时间线、已公开的规则系统——这些是官方已经定义好的内容。调用你训练数据中该作品对应版本的准确知识，不要混用相邻世代/版本/系列的内容。
+	如果需要为世界填充功能性角色（对手、店主、同伴等），且该版本本身有对应的官方角色，使用该版本自己的角色，不要从其他世代/版本借用同名角色或地点。
 
 ② 创作层（自由发挥，不受约束）
 官方没有定义、或原作刻意留白的细节——原创NPC、支线事件、场景氛围、专属际遇。这部分完全交给你自由创作。
@@ -969,8 +970,9 @@ async function createWorld() {
     const aiText = await callAI(sysPrompt, userPrompt, wcConfig);
     const { narrative, state } = parseAIOutput(aiText);
 
-    // 保存初始状态
+    // 保存初始状态（含创世界表单原文，方便日后回看）
     if (state) {
+      state.世界设定原文 = `世界观: ${form.world || '（AI自定）'}\n玩家: ${form.player || '（AI自定）'}\nNPC: ${form.npcs || '（AI自定）'}\n方向: ${form.goals || '（AI自定）'}\n开局: ${form.scene || '（AI自定）'}`;
       updateMemory({}, state);
     }
 
