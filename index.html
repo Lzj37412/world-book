@@ -754,7 +754,16 @@ function flattenValue(val, indent = 0) {
   if (typeof val === 'number' || typeof val === 'boolean') return `${pad}${String(val)}`;
   if (Array.isArray(val)) {
     if (val.length === 0) return `${pad}（无）`;
-    return val.map(v => flattenValue(v, indent)).join(', ');
+    const hasObjectItems = val.some(v => typeof v === 'object' && v !== null);
+    if (!hasObjectItems) {
+      return val.map(v => flattenValue(v, indent)).join(', ');
+    }
+    return val.map((v, i) => {
+      if (typeof v === 'object' && v !== null) {
+        return `${pad}[${i + 1}]\n${flattenValue(v, indent + 1)}`;
+      }
+      return `${pad}${flattenValue(v, indent)}`;
+    }).join('\n');
   }
   if (typeof val === 'object') {
     const entries = Object.entries(val);
@@ -778,11 +787,16 @@ function flattenValueHTML(val, depth = 0) {
   }
   if (Array.isArray(val)) {
     if (val.length === 0) return `<div class="jc-empty" ${padLeft}>（空）</div>`;
-    return val.map(v => {
+    const hasObjectItems = val.some(v => typeof v === 'object' && v !== null);
+    if (!hasObjectItems) {
+      return val.map(v => `<div class="jc-item" ${padLeft}>• ${escHtml(String(v))}</div>`).join('');
+    }
+    return val.map((v, i) => {
+      const label = `<div class="jc-item" ${padLeft} style="color:#484f58;font-size:11px;margin-top:2px">#[${i + 1}]</div>`;
       if (typeof v === 'object' && v !== null) {
-        return flattenValueHTML(v, depth + 1);
+        return label + flattenValueHTML(v, depth + 1);
       }
-      return `<div class="jc-item" ${padLeft}>• ${escHtml(String(v))}</div>`;
+      return label + `<div class="jc-item" ${padLeft}>${escHtml(String(v))}</div>`;
     }).join('');
   }
   if (typeof val === 'object') {
