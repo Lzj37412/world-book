@@ -598,6 +598,27 @@ function clearMemory() {
   localStorage.removeItem(STORAGE_KEY);
 }
 
+// ---------- 最近对话滑动窗口（保留 N 轮原始问答，补 STATE 摘要的短程细节盲区） ----------
+
+const HISTORY_KEY = 'ai_sandbox_recent_history';
+const HISTORY_WINDOW = 4;
+
+function loadRecentHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
+  catch (e) { return []; }
+}
+
+function pushRecentHistory(input, narrative) {
+  const history = loadRecentHistory();
+  history.push({ input, narrative });
+  while (history.length > HISTORY_WINDOW) history.shift();
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+function clearRecentHistory() {
+  localStorage.removeItem(HISTORY_KEY);
+}
+
 // ---------- Mock AI（无 API Key 时的降级） ----------
 
 function mockAI(input, memory) {
@@ -802,7 +823,7 @@ function flattenValueHTML(val, depth = 0) {
   return `<div class="jc-item" ${padLeft}>${escHtml(String(val))}</div>`;
 }
 
-function buildPrompt(input, memory) {
+function buildPrompt(input, memory, recentHistory) {
   // 递归展开 memory 对象为纯文本（防 [object Object]）
   const memLines = Object.entries(memory || {}).map(([key, val]) => {
     const v = flattenValue(val, 0);
@@ -814,7 +835,15 @@ function buildPrompt(input, memory) {
 
   const memoryText = memLines.length > 0 ? memLines.join('\n') : '（无）';
 
-  return `【当前世界状态】
+  // 滑动窗口：最近几轮原始问答（补 STATE 摘要的短程细节盲区）
+  const historyText = (recentHistory && recentHistory.length > 0)
+    ? recentHistory.map(h => `玩家：${h.input}\nGM：${h.narrative}`).join('\n\n')
+    : '（无）';
+
+  return `【最近对话】
+${historyText}
+
+【当前世界状态】
 ${memoryText}
 
 【玩家行动】
@@ -910,6 +939,7 @@ function buildWorldPrompt(form) {
 }
 
 async function createWorld() {
+  clearRecentHistory(); // 新世界清空旧对话历史
   const btn = document.getElementById('btn-create-world');
   btn.disabled = true;
   btn.textContent = '⏳ 世界生成中...';
@@ -1012,6 +1042,7 @@ function doSave(idx) {
     location: String(memory.location || ''),
     turnCount: document.getElementById('turn-count').textContent || '0',
     memory: JSON.parse(JSON.stringify(memory)),
+    recentHistory: loadRecentHistory(),
     chatHTML: chatHTML,
     savedAt: Date.now()
   };
@@ -1025,8 +1056,9 @@ function doLoad(idx) {
   const s = saves[idx];
   if (!s || !s.memory) return;
   if (!confirm(`读档「${s.title}」？当前进度将被覆盖。`)) return;
-  // 保存 memory + 聊天记录 + 回合数 → 刷新
+  // 保存 memory + 最近对话历史 + 聊天记录 + 回合数 → 刷新
   localStorage.setItem(STORAGE_KEY, JSON.stringify(s.memory));
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(s.recentHistory || []));
   localStorage.setItem('load_turn', String(s.turnCount || '0'));
   if (s.chatHTML) localStorage.setItem('load_chat', s.chatHTML);
   document.getElementById('save-modal').classList.remove('open');
@@ -1057,9 +1089,9 @@ function updateMemory(oldMemory, newState) {
 
 // ---------- 真实 AI 调用 ----------
 
-async function realAI(input, memory) {
+async function realAI(input, memory, recentHistory) {
   const sysPrompt = systemPrompt();
-  const userPrompt = buildPrompt(input, memory);
+  const userPrompt = buildPrompt(input, memory, recentHistory);
   appendMessage('memory-ref', '⏳ AI 思考中……');
   disableInput(true);
 
@@ -1354,15 +1386,16 @@ async function submitAction() {
   // 1. 显示用户输入
   appendMessage('user', `🧑 ${input}`);
 
-  // 2. 加载记忆 + 快照（用于本轮变化对比）
+  // 2. 加载记忆 + 最近对话历史 + 快照
   const memory = loadMemory();
+  const recentHistory = loadRecentHistory();
   captureSnapshot(memory);
 
   // 3. AI 生成
   let result;
   try {
     const hasKey = !!(JSON.parse(localStorage.getItem('ai_config') || '{}').apiKey);
-    result = hasKey ? await realAI(input, memory) : mockAI(input, memory);
+    result = hasKey ? await realAI(input, memory, recentHistory) : mockAI(input, memory);
   } catch (e) {
     disableInput(false);
     appendMessage('memory-ref', `❌ ${e.message || '出错了'}`);
@@ -1383,7 +1416,10 @@ async function submitAction() {
     }
   }
 
-  // 7. 刷新面板 + 本轮变化
+  // 7. 追加本轮原始对话到滑动窗口
+  pushRecentHistory(input, result.text);
+
+  // 8. 刷新面板 + 本轮变化
   renderMemoryView(memory);
   const diff = computeDiff(_prevMemory, memory);
   if (diff) renderDiff(diff);
@@ -1484,6 +1520,7 @@ function init() {
   document.getElementById('clear-btn').addEventListener('click', () => {
     if (confirm('清除所有记忆？这将重新开始。')) {
       clearMemory();
+      clearRecentHistory();
       document.getElementById('chat-log').innerHTML = '';
       document.getElementById('turn-count').textContent = '0';
       init();
