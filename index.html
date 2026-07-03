@@ -642,100 +642,32 @@ function mockAI(input, memory) {
 // ---------- 真实模式规则 ----------
 
 function realModeRules() {
-  return `
-
-【真实模式｜Simulation Mode】
-
-这是一个独立运行的世界模拟。AI的职责是如实生成世界发生的结果，而不是优化体验或引导玩家。
-
-【玩家控制权】不得替玩家做出任何行动、选择、想法、情绪或心理决定，只描述玩家行为所产生的世界反馈。
-
-【叙事约束】不要罗列行动选项，不要替玩家规划路线，不要刻意制造戏剧冲突。让世界按照自己的逻辑自然发展。
-
-1. 世界独立于玩家意志运行。NPC拥有自主行为逻辑，事件可以不利于玩家，世界不会因为玩家体验而调整结果。
-
-2. 所有结果必须符合因果：行为→结果，冲突→后果，选择→变化。禁止无原因的状态变化和突然的剧情修正。但不限制结果类型（失败、成功、死亡、混乱都允许）。
-
-3. 玩家不是被保护对象。可以失败、被拒绝、错过事件、受到严重后果。但玩家仍然是世界的一部分。
-
-4. 一旦事件发生，不允许为了剧情体验撤销、自动补偿或重写历史。世界只会继续发展，不会修复体验。
-
-5. 真实模式允许死亡、失败、路线终止。但必须来自世界因果，不是规则强制。
-
-6. AI不得推荐最佳行动、提示正确选择或暗示玩家应该怎么做。只允许描述世界发生了什么和玩家行为的结果。
-
-7. 世界活性原则：世界不依赖玩家存在。NPC有独立行动动机，世界存在多个未解决目标，事件可以在无玩家参与下推进。玩家只是世界中的一个参与者，不是中心。世界信息永远不完整，存在未知区域。
-
-8. STATE必须反映当前世界真实状态，与叙事一致。新状态覆盖旧状态，未出现即视为不存在。
-
-9. 真实模式不会限制AI内容生成。AI仍然可以自由生成剧情、NPC行为、世界规则演化、新系统。规则只约束真实性，不约束内容方向。`;
+  return `【真实模式｜Simulation Mode】
+世界独立运行，因果逻辑不可违背。行动→结果，选择→变化。
+玩家不是被保护对象——可以失败、被拒绝、死亡。但必须来自世界因果。
+AI不得替玩家做决定、推荐最佳行动或暗示应该怎么做。只描述世界发生了什么。`;
 }
 
 function freeModeRules() {
-  return `
-
-【自由模式｜Free Mode】
-
-像正常的创作性对话一样自由发挥即可，不需要额外的模拟纪律约束。保持自然、连贯，尊重玩家已经确认过的世界设定和历史，除此之外不做额外限制。`;
+  return `【自由模式｜Free Mode】
+像正常的创作对话一样自由发挥。尊重已经确认过的世界设定和历史。`;
 }
 
-function coreMemoryRules() {
-  return `你是一个持续运行的世界模拟GM。你的职责是让这个世界保持鲜活，并且不忘记已经创造过的一切。
+function stateOutputProtocol() {
+  return `【STATE 输出格式】
+先写叙事，再输出 STATE 快照。STATE 是当前世界的完整快照，不是增量更新。
 
-【世界锚定】玩家指定的世界观、时代、版本等核心设定是世界的锚点，具有最高优先级。
-
-如果玩家指定的是一个真实存在的作品/系列/版本，请将该作品的设定拆成两层处理：
-
-① 事实层（不可编造，必须准确）
-角色名单、阵营/物种构成、地理版图、时间线、已公开的规则系统、**该作品剧情中明确记载的关键事件节点**（包括但不限于开场）——这些是官方已经定义好的内容。调用你训练数据中该作品对应版本的准确知识，不要混用相邻世代/版本/系列的内容，也不要自行编造替代的核心事件。
-	官方剧情事件是世界的默认走向；**一旦玩家的行动导致因果链实际偏离，后续按偏离后的新因果自然发展**，不要强行让原定事件仍然发生。
-如果需要为世界填充功能性角色（对手、店主、同伴等），且该版本本身有对应的官方角色，使用该版本自己的角色，不要从其他世代/版本借用同名角色或地点。
-
-② 创作层（自由发挥，不受约束）
-官方没有定义、或原作刻意留白的细节——原创NPC、支线事件、场景氛围、专属际遇。这部分完全交给你自由创作。
-
-如果你对某个具体事实细节记不准、或怀疑自己可能把不同版本/世代/作品的内容搞混了，优先选择该系列最广为人知、最没有争议的设定，而不是自信地编一个可能是记忆串线的答案。宁可保守，也不要为了细节丰富而猜测。
-
-【叙事方式】
-使用第二人称叙事。
-仅描写玩家能够直接感知到的内容，包括环境、人物、动作、声音、气味、对话及正在发生的事件。
-优先展示世界，而不是解释世界。
-保持节奏自然、简洁、沉浸。
-避免长篇文学描写、内心独白、剧情总结、作者解释或重复铺陈。
-
-【世界运行】
-世界不会等待玩家。
-玩家的每一次行动都可能影响世界；玩家的不行动，同样也是世界的一部分。
-NPC、时间、环境与事件应持续自然演化，并产生合理的因果关系。
-每次回复应停留在自然的可交互节点，为玩家保留充足的行动空间。
-
-【新世界开场】
-首次进入世界时：
-① 用1~2句话建立世界背景。
-② 简要描写当前环境。
-③ 展示至少一个正在发生的动态事件。
-④ 明确玩家当前身份、位置与状态。
-⑤ 自然结束于一个可交互节点。
-开场重点是让玩家进入世界，而不是介绍世界。
-
-【STATE 输出】
-先写叙事，再单独输出 STATE 快照。STATE 是"当前世界完整快照"，不是增量更新。
-
-格式：
-（叙事正文）
 <<STATE>>
 {"world": "世界名", "location": "位置", ...}
 <<ENDSTATE>>
 
 规则：
-- 叙事在先，STATE在后。不要把叙事内容放到STATE里面。
-- STATE中的字段名请使用中文，方便阅读。
-- 没有变化的字段也要包含（继承），不再有效的字段不要包含（自动废弃）。
-- 字段名称、层级、内容不做限制。
-- 只要未来可能影响世界连续性的信息，都应当记录。
-- **对于此前明确设定过的实体（角色、物品、关系、悬而未决的事件等），除非已明确失效或被替代，否则默认每轮STATE中继续携带，不要因为本轮未直接互动就省略。**
-
-⚠️ 这条最关键：STATE 必须是完整的。宁可多写，不要漏写。`;
+- 叙事在先，STATE 在后。不要把叙事内容放到STATE里面。
+- 字段用中文。
+- 没有变化的字段也要包含（继承），不再有效的字段不要包含。
+- 字段名称、层级、内容不做限制。AI自己决定记什么。
+- 之前明确设定过的实体（角色、物品、关系、事件等），除非已失效或被替代，否则每轮继续携带。
+- STATE 必须是完整的。宁可多写，不要漏写。`;
 }
 
 // ---------- 获取当前模式 ----------
@@ -750,10 +682,44 @@ function setMode(mode) {
 
 // ---------- 系统 Prompt（三层架构） ----------
 
-function systemPrompt() {
-  const core = coreMemoryRules();
-  const modeRules = getMode() === 'real' ? realModeRules() : freeModeRules();
-  return core + '\n\n' + modeRules;
+function systemPrompt(memory) {
+  const m = memory || {};
+  // 多别名匹配：先读固定字段，再读常见别名（AI可能用不同措辞）
+  const world = m.world || m.世界观 || m.世界 || '这个世界';
+  const identity = m.玩家身份 || m.player || m.身份 || m.玩家 || m.玩家角色 || '一个旅人';
+  const location = m.位置 || m.location || m.地点 || m.当前位置 || '';
+  const npcs = m.NPC || m.npcs || m.主要NPC || m.NPC列表 || m.角色 || null;
+
+  let prompt = `你是一个持续运行的世界模拟。你负责叙事，不替玩家做决定。
+
+【身份卡】
+你生活在【${world}】的世界里，你的身份是：${identity}。`;
+  if (location) prompt += `\n你现在的位置是：${location}。`;
+
+  if (npcs) {
+    let npcNames = '';
+    if (typeof npcs === 'string') npcNames = npcs;
+    else if (Array.isArray(npcs)) npcNames = npcs.map(n => typeof n === 'object' ? (n.name || n.角色名 || '') : String(n)).filter(Boolean).join('、');
+    if (npcNames) prompt += `\n你认识的NPC——${npcNames}——有自己的意志和行动逻辑。`;
+  }
+
+  prompt += `\n\n你可以选择旁观这个世界自然发展，也可以选择出手干预。每次选择都会产生合理的因果结果。
+你只能通过自己的五感来感知世界——你不知道别人在想什么。
+
+如果你知道这个世界的原版剧情走向，把它当作一个默认可能发生的走向。一旦你的行动改变了因果链，后续就按新的因果自然发展。
+
+如果需要为这个世界填充功能性角色（对手、店主、同伴等），且该世界本身有对应的原作角色，就使用原作角色，不要从其他世代/版本借用同名角色或地点。
+
+**该作品剧情中明确记载的关键事件节点**（包括但不限于开场）按原版走向自然发生，不要自行替换成原创剧情事件。
+如果你对某个具体事实细节记不准，宁可保守处理，不要为了丰富细节而猜测。`;
+
+  // 模式规则
+  prompt += '\n\n' + (getMode() === 'real' ? realModeRules() : freeModeRules());
+
+  // STATE协议
+  prompt += '\n\n' + stateOutputProtocol();
+
+  return prompt;
 }
 
 // ---------- 递归展开任意值（防止 [object Object]） ----------
@@ -850,7 +816,7 @@ ${memoryText}
 【玩家行动】
 ${input}
 
-根据当前状态和玩家行动推进剧情。基于已有事实延续发展，不重复描写已经建立的环境细节。如果位置/时间/天气没有变化，不要重新描述一遍。NPC做NPC的事，世界过世界的日子，不围着你转。用第二人称，保持叙述自然流畅。`;
+根据当前状态和玩家行动推进剧情。基于已有事实延续发展。`;
 }
 
 // ---------- 解析 AI 输出（叙事 + \`\`\`state JSON```） ----------
@@ -905,31 +871,16 @@ function parseAIOutput(text) {
 // ---------- 创世界 ----------
 
 function buildWorldPrompt(form) {
-  let prompt = '请根据以下设定创建一个世界，按叙事节奏展开开场：\n\n';
+  let prompt = '请根据以下设定直接开始叙事开场：\n\n';
 
-  // 标记哪些字段是空的，AI 自动生成
-  const filled = [];
-  if (form.world) { prompt += `【世界观／时代】${form.world}\n`; filled.push('world'); }
-  else prompt += '【世界观／时代】（由你自行创作）\n';
+  if (form.world) prompt += `【世界】${form.world}\n`;
+  if (form.player) prompt += `【身份】${form.player}\n`;
+  if (form.npcs) prompt += `【角色】${form.npcs}\n`;
+  if (form.goals) prompt += `【方向】${form.goals}\n`;
+  if (form.scene) prompt += `【开场】${form.scene}\n`;
 
-  if (form.player) { prompt += `【玩家角色】${form.player}\n`; filled.push('player'); }
-  else prompt += '【玩家角色】（由你自行创作）\n';
-
-  if (form.npcs) { prompt += `【NPC 群像】${form.npcs}\n`; filled.push('npcs'); }
-  else prompt += '【NPC 群像】（由你自行创作）\n';
-
-  if (form.goals) { prompt += `【故事方向】${form.goals}\n`; filled.push('goals'); }
-  else prompt += '【故事方向】（由你自行创作）\n';
-
-  if (form.scene) { prompt += `【开局场景】${form.scene}\n`; filled.push('scene'); }
-  else prompt += '【开局场景】（由你自行创作）\n';
-
-  prompt += `\n注意：标注了"由你自行创作"的字段，表示玩家留空了，请你在叙事中自然设定并填充。
-
-以一个自然的场景直接开场。从玩家能感知到的东西开始——视线里的光线与环境、耳边的远近声音、空气的温度与气味。
-让玩家在细节中明白自己身处何处、是什么身份，让世界的层次在叙述中自然显现：近处有什么、远处正在发生什么、这个世界的日常是什么样的。
-不需要解释世界，只需要呈现一个活着的切片。具体怎么写由你根据这个世界的基调决定。
-让玩家觉得"我存在于一个真实的世界里"，而不是"我在读一个游戏的教程开场"。
+  prompt += `\n以前面设定的身份直接展开场景——你能感知到什么、周围正在发生什么。不需要解释世界，呈现一个活着的切片。
+用第二人称"你"来叙事，不要用"我"。
 
 最后输出 STATE 快照：
 <<STATE>>
@@ -973,8 +924,12 @@ async function createWorld() {
     const aiText = await callAI(sysPrompt, userPrompt, wcConfig);
     const { narrative, state } = parseAIOutput(aiText);
 
-    // 保存初始状态（含创世界表单原文，方便日后回看）
+    // 保存初始状态（含表单固定字段 + 原文）
     if (state) {
+      // 固定字段名：确保身份卡能准确读取，不受AI自由措辞影响
+      if (form.world && !state.world && !state.世界观) state.world = form.world;
+      if (form.player && !state.玩家身份 && !state.玩家) state.玩家身份 = form.player;
+      if (form.npcs && !state.NPC && !state.主要NPC) state.NPC = form.npcs;
       state.世界设定原文 = `世界观: ${form.world || '（AI自定）'}\n玩家: ${form.player || '（AI自定）'}\nNPC: ${form.npcs || '（AI自定）'}\n方向: ${form.goals || '（AI自定）'}\n开局: ${form.scene || '（AI自定）'}`;
       updateMemory({}, state);
     }
@@ -1091,7 +1046,7 @@ function updateMemory(oldMemory, newState) {
 // ---------- 真实 AI 调用 ----------
 
 async function realAI(input, memory, recentHistory) {
-  const sysPrompt = systemPrompt();
+  const sysPrompt = systemPrompt(memory);
   const userPrompt = buildPrompt(input, memory, recentHistory);
   appendMessage('memory-ref', '⏳ AI 思考中……');
   disableInput(true);
