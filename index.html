@@ -510,6 +510,39 @@
       <label>模型</label>
       <input type="text" id="cfg-model" placeholder="deepseek-chat / gemini-2.0-flash" value="deepseek-chat">
     </div>
+
+    <!-- 🌍 创建世界专用模型 -->
+    <div class="field" style="margin-top:16px;padding-top:16px;border-top:1px solid #30363d">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:0">
+        <input type="checkbox" id="cfg-wc-enable" onchange="document.getElementById('cfg-wc-fields').style.display=this.checked?'block':'none'">
+        🌍 创建世界时使用不同模型
+      </label>
+    </div>
+    <div id="cfg-wc-fields" style="display:none">
+      <div class="field">
+        <label>创世界·接口</label>
+        <select id="cfg-wc-provider" onchange="var ep=document.getElementById('cfg-wc-endpoint'),md=document.getElementById('cfg-wc-model');switch(this.value){case'ds':ep.value='https://api.deepseek.com/v1/chat/completions';md.value='deepseek-chat';break;case'sf':ep.value='https://api.siliconflow.cn/v1/chat/completions';md.value='Qwen/Qwen3.6-35B-A3B';break;case'or':ep.value='https://openrouter.ai/api/v1/chat/completions';md.value='google/gemma-4-26b-a4b-it:free';break;case'zhipu':ep.value='https://open.bigmodel.cn/api/paas/v4/chat/completions';md.value='glm-4-flash';break;case'gemini':ep.value='https://generativelanguage.googleapis.com';md.value='gemini-2.0-flash';break;default:ep.value='';md.value=''}" style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 12px;color:#c9d1d9;font-size:13px;outline:none;font-family:inherit">
+          <option value="ds">DeepSeek 官方</option>
+          <option value="sf">硅基流动 SiliconFlow</option>
+          <option value="or">OpenRouter</option>
+          <option value="zhipu">智谱AI</option>
+          <option value="gemini">Google Gemini</option>
+          <option value="custom">自定义（OpenAI 兼容）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>创世界·API 地址</label>
+        <input type="text" id="cfg-wc-endpoint" placeholder="https://api.deepseek.com">
+      </div>
+      <div class="field">
+        <label>创世界·API Key <span style="color:#484f58;font-weight:400">（不填则继承主 Key）</span></label>
+        <input type="password" id="cfg-wc-key" placeholder="留空则使用上方 API Key">
+      </div>
+      <div class="field">
+        <label>创世界·模型</label>
+        <input type="text" id="cfg-wc-model" placeholder="deepseek-chat">
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn-primary" id="settings-save">保存</button>
       <button class="btn-cancel" id="settings-test">🔌 测试连接</button>
@@ -824,8 +857,20 @@ async function createWorld() {
   const sysPrompt = systemPrompt();
   const userPrompt = buildWorldPrompt(form);
 
+  // 构建创世界专用配置（如果启用）
+  const cfg = JSON.parse(localStorage.getItem('ai_config') || '{}');
+  let wcConfig = null;
+  if (cfg.wc?.enabled) {
+    wcConfig = {
+      provider: cfg.wc.provider || cfg.provider,
+      endpoint: cfg.wc.endpoint || cfg.endpoint,
+      apiKey: cfg.wc.apiKey || cfg.apiKey,
+      model: cfg.wc.model || cfg.model
+    };
+  }
+
   try {
-    const aiText = await callAI(sysPrompt, userPrompt);
+    const aiText = await callAI(sysPrompt, userPrompt, wcConfig);
     const { narrative, state } = parseAIOutput(aiText);
 
     // 保存初始状态
@@ -990,6 +1035,21 @@ function loadSettingsToForm() {
   document.getElementById('cfg-endpoint').value = cfg.endpoint || def.ep;
   document.getElementById('cfg-key').value = cfg.apiKey || '';
   document.getElementById('cfg-model').value = cfg.model || def.md;
+
+  // 创世界专用配置
+  const wc = cfg.wc || {};
+  document.getElementById('cfg-wc-enable').checked = !!wc.enabled;
+  document.getElementById('cfg-wc-fields').style.display = wc.enabled ? 'block' : 'none';
+  if (wc.provider) {
+    document.getElementById('cfg-wc-provider').value = wc.provider;
+    const wcDef = provDefaults[wc.provider] || provDefaults.custom;
+    document.getElementById('cfg-wc-endpoint').value = wc.endpoint || wcDef.ep;
+    document.getElementById('cfg-wc-model').value = wc.model || wcDef.md;
+  } else {
+    document.getElementById('cfg-wc-endpoint').value = wc.endpoint || '';
+    document.getElementById('cfg-wc-model').value = wc.model || '';
+  }
+  document.getElementById('cfg-wc-key').value = wc.apiKey || '';
 }
 
 function saveSettingsFromForm() {
@@ -999,6 +1059,21 @@ function saveSettingsFromForm() {
     apiKey: document.getElementById('cfg-key').value.trim(),
     model: document.getElementById('cfg-model').value.trim()
   };
+
+  // 创世界专用配置
+  const wcEnabled = document.getElementById('cfg-wc-enable').checked;
+  if (wcEnabled) {
+    config.wc = {
+      enabled: true,
+      provider: document.getElementById('cfg-wc-provider').value,
+      endpoint: document.getElementById('cfg-wc-endpoint').value.trim(),
+      apiKey: document.getElementById('cfg-wc-key').value.trim(),
+      model: document.getElementById('cfg-wc-model').value.trim()
+    };
+  } else {
+    delete config.wc;
+  }
+
   localStorage.setItem('ai_config', JSON.stringify(config, null, 2));
   closeSettings();
   updateApiStatus();
@@ -1043,14 +1118,8 @@ async function testConnection() {
 }
 
 function openSettings() {
-  const modal = document.getElementById('settings-modal');
-  // 加载保存的配置
-  const cfg = JSON.parse(localStorage.getItem('ai_config') || '{}');
-  document.getElementById('cfg-provider').value = cfg.provider || 'openai';
-  document.getElementById('cfg-endpoint').value = cfg.endpoint || '';
-  document.getElementById('cfg-key').value = cfg.apiKey || '';
-  document.getElementById('cfg-model').value = cfg.model || '';
-  modal.classList.add('open');
+  loadSettingsToForm();
+  document.getElementById('settings-modal').classList.add('open');
 }
 
 function closeSettings() {

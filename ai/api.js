@@ -21,10 +21,11 @@ function hasApiKey() {
  * 调用 AI API
  * @param {string} systemPrompt - 系统提示词（GM 角色）
  * @param {string} userPrompt - 用户输入（含当前记忆回填）
+ * @param {object} [configOverride] - 可选，临时覆盖 API 配置（用于创世界路由）
  * @returns {Promise<string>} AI 回复文本
  */
-async function callAI(systemPrompt, userPrompt) {
-  const config = getConfig();
+async function callAI(systemPrompt, userPrompt, configOverride) {
+  const config = configOverride || getConfig();
   const provider = config.provider || 'ds';
   const apiKey = config.apiKey || '';
 
