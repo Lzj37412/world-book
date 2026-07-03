@@ -52,6 +52,8 @@ async function callOpenAI(systemPrompt, userPrompt, config) {
     ],
     temperature: 0.85
   };
+  // 硅基流动 Qwen 默认开启思考模式→关闭，避免思维链干扰输出
+  if (config.provider === 'sf') body.enable_thinking = false;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 60000);
