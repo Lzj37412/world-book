@@ -745,21 +745,69 @@ STATE 中的字段名请使用中文，方便阅读。
   return base;
 }
 
-// ---------- 构建消息体（含 Memory 回填） ----------
+// ---------- 递归展开任意值（防止 [object Object]） ----------
+
+function flattenValue(val, indent = 0) {
+  const pad = '  '.repeat(indent);
+  if (val === null || val === undefined) return `${pad}（无）`;
+  if (typeof val === 'string') return `${pad}${val}`;
+  if (typeof val === 'number' || typeof val === 'boolean') return `${pad}${String(val)}`;
+  if (Array.isArray(val)) {
+    if (val.length === 0) return `${pad}（无）`;
+    return val.map(v => flattenValue(v, indent)).join(', ');
+  }
+  if (typeof val === 'object') {
+    const entries = Object.entries(val);
+    if (entries.length === 0) return `${pad}（空）`;
+    return entries.map(([k, v]) => {
+      if (typeof v === 'object' && v !== null) {
+        return `${pad}${k}:\n${flattenValue(v, indent + 1)}`;
+      }
+      return `${pad}${k}: ${v}`;
+    }).join('\n');
+  }
+  return `${pad}${String(val)}`;
+}
+
+// HTML 版递归展开（用于 renderMemoryView）
+function flattenValueHTML(val, depth = 0) {
+  const padLeft = depth > 0 ? `style="padding-left:${Math.min(depth * 12, 36)}px"` : '';
+  if (val === null || val === undefined) return `<div class="jc-empty" ${padLeft}>（无）</div>`;
+  if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
+    return `<div class="jc-item" ${padLeft}>${escHtml(String(val))}</div>`;
+  }
+  if (Array.isArray(val)) {
+    if (val.length === 0) return `<div class="jc-empty" ${padLeft}>（空）</div>`;
+    return val.map(v => {
+      if (typeof v === 'object' && v !== null) {
+        return flattenValueHTML(v, depth + 1);
+      }
+      return `<div class="jc-item" ${padLeft}>• ${escHtml(String(v))}</div>`;
+    }).join('');
+  }
+  if (typeof val === 'object') {
+    const entries = Object.entries(val);
+    if (entries.length === 0) return `<div class="jc-empty" ${padLeft}>（空）</div>`;
+    return entries.map(([k, v]) => {
+      const keyHtml = `<span class="sub-key">${escHtml(k)}</span>`;
+      if (typeof v === 'object' && v !== null) {
+        return `<div class="jc-item" ${padLeft} style="margin-top:2px">${keyHtml}</div>${flattenValueHTML(v, depth + 1)}`;
+      }
+      return `<div class="jc-item" ${padLeft}>${keyHtml}${escHtml(String(v))}</div>`;
+    }).join('');
+  }
+  return `<div class="jc-item" ${padLeft}>${escHtml(String(val))}</div>`;
+}
 
 function buildPrompt(input, memory) {
-  // 把 memory 对象拍平成文本描述
-  const memLines = [];
-  for (const [key, val] of Object.entries(memory)) {
-    if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
-      const sub = Object.entries(val).map(([k, v]) => `  ${k}: ${v}`).join('\n');
-      memLines.push(`${key}:\n${sub}`);
-    } else if (Array.isArray(val)) {
-      memLines.push(`${key}: ${val.length > 0 ? val.join(', ') : '（无）'}`);
-    } else {
-      memLines.push(`${key}: ${val}`);
+  // 递归展开 memory 对象为纯文本（防 [object Object]）
+  const memLines = Object.entries(memory || {}).map(([key, val]) => {
+    const v = flattenValue(val, 0);
+    if (typeof val === 'object' && val !== null && !Array.isArray(val) && Object.keys(val).length > 0) {
+      return `${key}:\n${v}`;
     }
-  }
+    return `${key}: ${v}`;
+  });
 
   const memoryText = memLines.length > 0 ? memLines.join('\n') : '（无）';
 
@@ -1172,7 +1220,7 @@ function renderDiff(changes) {
   if (!changes) return;
   const items = changes.map(c => {
     const key = escHtml(c.key);
-    if (c.type === 'added') return `<div class="jc-item is-new">✨ ${key}：${escHtml(String(c.newVal).slice(0, 40))}</div>`;
+    if (c.type === 'added') return `<div class="jc-item is-new">✨ ${key}：${escHtml(flattenValue(c.newVal, 0).slice(0, 60))}</div>`;
     if (c.type === 'removed') return `<div class="jc-item" style="color:#da3633">🗑️ ${key}</div>`;
     if (c.type === 'changed') return `<div class="jc-item is-changed">🔄 ${key}</div>`;
     return '';
@@ -1200,30 +1248,13 @@ function renderMemoryView(memory) {
 
   let html = '';
   for (const [key, val] of Object.entries(memory)) {
-    let bodyHtml = '';
+    let bodyHtml = flattenValueHTML(val, 0);
+    // 计算粗略条目数（仅用于计数 badge）
     let count = '';
-
-    if (typeof val === 'string') {
-      bodyHtml = `<div class="jc-item">${escHtml(val)}</div>`;
-    } else if (Array.isArray(val)) {
-      if (val.length === 0) {
-        bodyHtml = `<div class="jc-empty">（空）</div>`;
-      } else {
-        count = val.length;
-        bodyHtml = val.map(v => `<div class="jc-item">• ${escHtml(v)}</div>`).join('');
-      }
+    if (Array.isArray(val)) {
+      count = val.length;
     } else if (typeof val === 'object' && val !== null) {
-      const entries = Object.entries(val);
-      if (entries.length === 0) {
-        bodyHtml = `<div class="jc-empty">（空）</div>`;
-      } else {
-        count = entries.length;
-        bodyHtml = entries.map(([k, v]) =>
-          `<div class="jc-item"><span class="sub-key">${escHtml(k)}</span>${escHtml(String(v))}</div>`
-        ).join('');
-      }
-    } else {
-      bodyHtml = `<div class="jc-item">${escHtml(String(val))}</div>`;
+      count = Object.keys(val).length;
     }
 
     html += `<div class="journal-card">
