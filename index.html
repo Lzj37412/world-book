@@ -365,6 +365,13 @@
     #memory-view { padding: 8px; }
     .journal-card .jc-header { padding: 6px 8px; }
     .journal-card .jc-body { padding: 0 8px 6px; }
+
+    /* 弹窗手机适配 */
+    .modal { width: 100%; max-width: 100%; padding: 16px; margin: 8px; }
+    .modal .field select { font-size: 16px; }
+    .save-grid { grid-template-columns: 1fr; }
+    .modal-actions { flex-wrap: wrap; }
+    .modal-actions button { flex: 1; min-width: 0; font-size: 12px; padding: 8px 10px; }
   }
 
   /* 🎮 模式切换 */
@@ -1186,10 +1193,12 @@ async function testConnection() {
       if (!res.ok) { const d = await res.json(); throw new Error(d.error?.message || 'HTTP ' + res.status); }
     } else {
       const url = endpoint; // 完整 URL
+      const body = { model: model || 'deepseek-chat', messages: [{ role: 'user', content: 'hi' }], max_tokens: 10 };
+      if (provider === 'sf') body.enable_thinking = false;
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-        body: JSON.stringify({ model: model || 'deepseek-chat', messages: [{ role: 'user', content: 'hi' }], max_tokens: 10 })
+        body: JSON.stringify(body)
       });
       if (!res.ok) { const t = await res.text(); throw new Error('HTTP ' + res.status + ': ' + t.slice(0, 100)); }
     }
