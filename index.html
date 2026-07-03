@@ -6,23 +6,8 @@
 <title>AI 记忆沙盒 · 记忆外挂</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {    } else if (typeof val === 'object' && val !== null) {
-      const entries = Object.entries(val);
-      if (entries.length === 0) {
-        bodyHtml = `<div class="jc-empty">（空）</div>`;
-      } else {
-        count = entries.length;
-        bodyHtml = entries.map(([k, v]) => {
-          const label = `<span class="sub-key">${escHtml(k)}</span>`;
-          if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
-            const sub = Object.entries(v).map(([sk, sv]) =>
-              `<div style="padding-left:12px;font-size:11px"><span class="sub-key">${escHtml(sk)}</span>${escHtml(String(sv))}</div>`
-            ).join('');
-            return `<div class="jc-item">${label}</div>${sub}`;
-          }
-          return `<div class="jc-item">${label}${escHtml(String(v))}</div>`;
-        }).join('');
-      }font-family: system-ui, 'Segoe UI', sans-serif;
+  body {
+    font-family: system-ui, 'Segoe UI', sans-serif;
     background: #0d1117;
     color: #c9d1d9;
     height: 100vh;
@@ -498,6 +483,7 @@
 </div>
 
 <!-- ⚙️ 设置弹窗 -->
+<!-- ⚠️ API Key 存储在 localStorage（纯本地单机场景安全），如要增加设备同步 / 分享功能，请注意不要把包含 API Key 的存档同步到其他设备 -->
 <div class="modal-overlay" id="settings-modal">
   <div class="modal">
     <h2>⚙️ AI 设置</h2>
@@ -641,12 +627,17 @@ function systemPrompt() {
 
 玩家只是这个世界中的一员，可以自由行动。你的职责是如实呈现这个世界对玩家行为的反馈，而不是替玩家创造故事。
 
-【世界锚定】玩家指定的世界观、时代、版本等核心设定是世界的锚点。AI应保持这些内容不变，在此基础上扩展：
-- 游戏/世界基础规则（属性克制、种族关系、地理等）
-- 已明确设定的世界观内容
-- 玩家输入的核心设定
+【世界锚定】玩家指定的世界观、时代、版本等核心设定是世界的锚点，具有最高优先级。
 
-AI可以自由调用自身训练数据中与指定设定相关的知识来丰富世界细节。若信息不足，可以进行合理的创作性补全，但不得与已有核心设定矛盾。
+如果玩家指定的是一个真实存在的作品/系列/版本，请将该作品的设定拆成两层处理：
+
+① 事实层（不可编造，必须准确）
+角色名单、阵营/物种构成、地理版图、时间线、已公开的规则系统——这些是官方已经定义好的内容。调用你训练数据中该作品对应版本的准确知识，不要混用相邻世代/版本/系列的内容。
+
+② 创作层（自由发挥，不受约束）
+官方没有定义、或原作刻意留白的细节——原创NPC、支线事件、场景氛围、专属际遇。这部分完全交给你自由创作。
+
+如果你对某个具体事实细节记不准、或怀疑自己可能把不同版本/世代/作品的内容搞混了，优先选择该系列最广为人知、最没有争议的设定，而不是自信地编一个可能是记忆串线的答案。宁可保守，也不要为了细节丰富而猜测。
 
 【GM行为规则】
 
@@ -745,7 +736,7 @@ ${memoryText}
 【玩家行动】
 ${input}
 
-根据当前状态和玩家行动推进剧情。保持沉浸感，用感官描写。不只描述发生了什么，也描述你感受到了什么。NPC做NPC的事，世界过世界的日子，不围着你转。`;
+根据当前状态和玩家行动推进剧情。保持沉浸感，用感官描写。不只描述发生了什么，也描述玩家能感知到的环境细节——视觉、听觉、触觉、气味。NPC做NPC的事，世界过世界的日子，不围着你转。`;
 }
 
 // ---------- 解析 AI 输出（叙事 + \`\`\`state JSON```） ----------
@@ -807,25 +798,10 @@ function buildWorldPrompt(form) {
 
   prompt += `\n注意：标注了"由你自行创作"的字段，表示玩家留空了，请你在叙事中自然设定并填充。
 
-请以小说般的叙事展开开场，按以下节奏自然融入（不是列步骤）：
-
-① 引子 —— 玩家如何来到这个世界？用一小段描写交代起始契机。
-② 醒来/抵达 —— 玩家恢复意识，从感官开始：
-   - 睁开眼：光线、色彩、空间的印象
-   - 听到：远处的声音、近处的动静、风声/机械声/人语声
-   - 身体：温度、触感、疲劳、疼痛、心跳
-   - 气味：空气中有什么气息？
-③ 定位 —— 玩家确定自己身处何处：
-   - 周围的环境细节（建筑/自然/科技，让人一读就有画面）
-   - 身边有没有NPC？他们在做什么？什么神情？
-   - 自己身上有什么？穿着什么？
-④ 世界的层次感 —— 不只写玩家眼前，也暗示这个世界的广度：
-   - 远处有什么？（地平线、高楼、山影、钟声传递的信息）
-   - 路人NPC的只言片语透露出什么信息？
-   - NPC之间有自己的关系和对话，不是只对玩家说话
-⑤ 第一钩子 —— 自然浮现 2~3 个可能的行动方向，不罗列清单，在叙事里留出岔路口
-
-重要：这不是游戏教程，是小说的开篇。让玩家感受到"这是一个活着的世界，我只是其中的一员"。
+以一个自然的场景直接开场。从玩家能感知到的东西开始——视线里的光线与环境、耳边的远近声音、空气的温度与气味。
+让玩家在细节中明白自己身处何处、是什么身份，让世界的层次在叙述中自然显现：近处有什么、远处正在发生什么、这个世界的日常是什么样的。
+不需要解释世界，只需要呈现一个活着的切片。具体怎么写由你根据这个世界的基调决定。
+让玩家觉得"我存在于一个真实的世界里"，而不是"我在读一个游戏的教程开场"。
 
 最后输出 \`\`\`state { ... } \`\`\` 包含所有需要长期记忆的事实。AI 自己决定有哪些字段。`;
   return prompt;
@@ -1234,12 +1210,6 @@ function formatText(text, type) {
 
 function inlineBr(s) {
   return s.replace(/\n/g, '<br>');
-}
-
-function escHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = String(s);
-  return d.innerHTML;
 }
 
 function updateTurnCount() {
