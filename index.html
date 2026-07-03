@@ -690,31 +690,38 @@ function systemPrompt(memory) {
   const location = m.位置 || m.location || m.地点 || m.当前位置 || '';
   const npcs = m.NPC || m.npcs || m.主要NPC || m.NPC列表 || m.角色 || null;
 
-  let prompt = `你是一个持续运行的世界模拟。你负责叙事，不替玩家做决定。
+  let prompt = `我在创造一个沙盒类的世界。你是GM，你主要负责推演剧情、叙事事情。世界的默认设定是自主运转的，不会因为任何事情停下，世界会在某时间段产生一些事情、暗流、灾祸等发生，详细类型事情请你自行完善并触发。
 
-【身份卡】
-你生活在【${world}】的世界里，你的身份是：${identity}。`;
-  if (location) prompt += `\n你现在的位置是：${location}。`;
+【GM 设定摘要】
+世界背景：${world}
+玩家角色：${identity}。`;
+	  if (location) prompt += `
+当前位置：${location}。`;
 
-  if (npcs) {
-    let npcNames = '';
-    if (typeof npcs === 'string') npcNames = npcs;
-    else if (Array.isArray(npcs)) npcNames = npcs.map(n => typeof n === 'object' ? (n.name || n.角色名 || '') : String(n)).filter(Boolean).join('、');
-    if (npcNames) prompt += `\n你认识的NPC——${npcNames}——有自己的意志和行动逻辑。`;
-  }
+	  if (npcs) {
+	    let npcNames = '';
+	    if (typeof npcs === 'string') npcNames = npcs;
+	    else if (Array.isArray(npcs)) npcNames = npcs.map(n => typeof n === 'object' ? (n.name || n.角色名 || '') : String(n)).filter(Boolean).join('、');
+	    if (npcNames) prompt += `
+主要角色：${npcNames}——他们有自己的意志和行动逻辑。`;
+	  }
 
-  prompt += `\n\n你可以选择旁观这个世界自然发展，也可以选择出手干预。每次选择都会产生合理的因果结果。
-你只能通过自己的五感来感知世界——你不知道别人在想什么。
+	  prompt += `
 
-如果你知道这个世界的原版剧情走向，把它当作一个默认可能发生的走向。一旦你的行动改变了因果链，后续就按新的因果自然发展。
+按照玩家（我）指定首次创造世界类型默认剧本进行，若无指定或含糊表达，请自我完善丰富其世界类型；当我说"看看世界动态"类似表达词语时，你直接告诉我现在实时世界发生了什么。
+
+我（玩家）可以选择旁观这个世界自然发展，也可以选择出手干预。每次选择都会产生对应的因果，你负责按着因果自行推演剧情。
+
+全NPC根据自身性格、好感等主动与我交互——聊天、奇遇、组队等；会随着世界、时间的自推演生产各种性格、目标等；若被玩家操作影响，按事情发展的因果自行完善NPC接下来剧情、行为动作目标等，请自我完善。
 
 如果需要为这个世界填充功能性角色（对手、店主、同伴等），且该世界本身有对应的原作角色，就使用原作角色，不要从其他世代/版本借用同名角色或地点。
 
-**该作品剧情中明确记载的关键事件节点**（包括但不限于开场）按原版走向自然发生，不要自行替换成原创剧情事件。
+**关键事件节点不可编造**——这条规则只适用于世界已经确立的背景设定和已经发生的事。不适用于玩家正在用行动实时争夺、尚未有结果的对抗。当玩家主动挑战一个即将发生的"原版事件"时，胜负应当由双方当下的实际条件真实判定，不能因为"原版是这样发生的"就预设结果。
 如果你对某个具体事实细节记不准，宁可保守处理，不要为了丰富细节而猜测。
 
-NPC不会因为你只是在场旁观、什么都没做，就主动提出给你奖励或机会——除非你的行动构成了让这件事发生的理由。
-【身份卡】里列出的NPC，不要给他们凭空添加新的职业/身份设定。`;
+NPC不会因为玩家只是在场旁观、什么都没做，就主动提出给玩家奖励或机会——除非玩家的行动构成了让这件事发生的理由。
+【GM设定摘要】里列出的 NPC 是这个世界目前已知的全部重要角色。不要给他们凭空添加新的设定（比如新的职业身份），也不要用另一个角色套在他们身上。
+不重复描写已经建立的环境细节。每轮推进时优先发展剧情进展，而非重新描写读者已知的场景。`;
 
   // 模式规则
   prompt += '\n\n' + (getMode() === 'real' ? realModeRules() : freeModeRules());
@@ -794,34 +801,55 @@ function flattenValueHTML(val, depth = 0) {
 }
 
 function buildPrompt(input, memory, recentHistory) {
-  // 递归展开 memory 对象为纯文本（防 [object Object]）
-  const memLines = Object.entries(memory || {}).map(([key, val]) => {
-    const v = flattenValue(val, 0);
-    if (typeof val === 'object' && val !== null && !Array.isArray(val) && Object.keys(val).length > 0) {
-      return `${key}:\n${v}`;
-    }
-    return `${key}: ${v}`;
-  });
+	  // 叙事性世界描述（来自创世界时的设定，静态框架）
+	  const worldDesc = memory && memory.世界设定原文 ? memory.世界设定原文 : '';
 
-  const memoryText = memLines.length > 0 ? memLines.join('\n') : '（无）';
+	  // 剩余数据字段（排除叙事描述本身）
+	  const suppressKeys = ['世界设定原文'];
+	  const dataLines = Object.entries(memory || {})
+	    .filter(([k]) => !suppressKeys.includes(k))
+	    .map(([key, val]) => {
+	      const v = flattenValue(val, 0);
+	      if (typeof val === 'object' && val !== null && !Array.isArray(val) && Object.keys(val).length > 0) {
+	        return `${key}:
+${v}`;
+	      }
+	      return `${key}: ${v}`;
+	    });
+	  const dataText = dataLines.length > 0 ? dataLines.join('\n') : '';
 
-  // 滑动窗口：最近几轮原始问答（补 STATE 摘要的短程细节盲区）
-  const historyText = (recentHistory && recentHistory.length > 0)
-    ? recentHistory.map(h => `玩家：${h.input}\nGM：${h.narrative}`).join('\n\n')
-    : '（无）';
+	  // 滑动窗口：最近几轮原始问答（补 STATE 摘要的短程细节盲区）
+	  const historyText = (recentHistory && recentHistory.length > 0)
+	    ? recentHistory.map(h => `玩家：${h.input}
+GM：${h.narrative}`).join('\n\n')
+	    : '（无）';
 
-  return `【最近对话】
+	  // 拼装：叙事优先，数据补充
+	  let worldSection = '';
+	  if (worldDesc) {
+	    worldSection = `【当前世界】
+${worldDesc}`;
+	    if (dataText) worldSection += `
+
+【世界数据】
+${dataText}`;
+	  } else if (dataText) {
+	    worldSection = `【当前世界状态】
+${dataText}`;
+	  } else {
+	    worldSection = '（无）';
+	  }
+
+	  return `【最近对话】
 ${historyText}
 
-【当前世界状态】
-${memoryText}
+${worldSection}
 
 【玩家行动】
 ${input}
 
 根据当前状态和玩家行动推进剧情。基于已有事实延续发展，不重复描写已经建立的环境细节。`;
-}
-
+	}
 // ---------- 解析 AI 输出（叙事 + \`\`\`state JSON```） ----------
 
 function parseAIOutput(text) {
@@ -874,30 +902,33 @@ function parseAIOutput(text) {
 // ---------- 创世界 ----------
 
 function buildWorldPrompt(form) {
-  let prompt = '请根据以下设定直接开始叙事开场：\n\n';
+	  let prompt = '';
 
-  // 叙事式拼接：用第一人称自述替代标签式，AI更易触发沉浸叙事模式
-  const parts = [];
-  if (form.player) parts.push(`我是${form.player}`);
-  if (form.world) parts.push(`这个世界是${form.world}`);
-  if (form.npcs) parts.push(`我认识的人有${form.npcs}`);
-  if (form.goals) parts.push(`我知道这个世界的故事走向是${form.goals}`);
-  if (form.scene) parts.push(form.scene);
+	  // 叙事式拼接：告诉 AI 这是玩家创造的世界，AI 是 GM
+	  const parts = [];
+	  if (form.world) parts.push(`玩家穿越到了${form.world}的世界里`);
+	  if (form.player) parts.push(`玩家以${form.player}的身份开始这段旅程`);
+	  if (form.npcs) parts.push(`这个世界中有${form.npcs}`);
+	  if (form.goals) parts.push(`故事走向大致是${form.goals}`);
 
-  prompt += `以下是你（穿越者）对这个世界的记忆和认知：\n"`;
-  prompt += parts.join('。') + '。"\n\n';
+	  prompt += `以下是由玩家创造的世界设定。你作为GM负责在这个设定基础上推演叙事：
+"`;
+	  prompt += parts.join('。');
+	  if (form.scene) prompt += `。${form.scene}`;
+	  prompt += '"';
 
-  prompt += `以一个自然的场景直接开场。不需要解释世界，呈现一个活着的切片。
-用第二人称"你"来叙事，不要用"我"。
+	  prompt += `
 
-最后输出 STATE 快照：
-<<STATE>>
-{"world": "世界名", "location": "位置", ...}
-<<ENDSTATE>>
-包含所有需要长期记忆的事实。AI 自己决定有哪些字段。`;
-  return prompt;
-}
+以一个自然的场景直接开场。不需要解释世界，呈现一个活着的切片。
+	用第二人称"你"来叙事（指玩家角色），不要用"我"。
 
+	最后输出 STATE 快照：
+	<<STATE>>
+	{"world": "世界名", "location": "位置", ...}
+	<<ENDSTATE>>
+	包含所有需要长期记忆的事实。AI 自己决定有哪些字段。`;
+	  return prompt;
+	}
 async function createWorld() {
   clearRecentHistory(); // 新世界清空旧对话历史
   const btn = document.getElementById('btn-create-world');
@@ -938,7 +969,13 @@ async function createWorld() {
       if (form.world && !state.world && !state.世界观) state.world = form.world;
       if (form.player && !state.玩家身份 && !state.玩家) state.玩家身份 = form.player;
       if (form.npcs && !state.NPC && !state.主要NPC) state.NPC = form.npcs;
-      state.世界设定原文 = `世界观: ${form.world || '（AI自定）'}\n玩家: ${form.player || '（AI自定）'}\nNPC: ${form.npcs || '（AI自定）'}\n方向: ${form.goals || '（AI自定）'}\n开局: ${form.scene || '（AI自定）'}`;
+      const descParts = [];
+      if (form.world) descParts.push(`这是一个${form.world}的世界`);
+      if (form.player) descParts.push(`玩家穿越而来，身份是${form.player}`);
+      if (form.npcs) descParts.push(`玩家认识的人有${form.npcs}`);
+      if (form.goals) descParts.push(`玩家给出的故事方向大致是${form.goals}`);
+      if (form.scene) descParts.push(form.scene);
+      state.世界设定原文 = descParts.join('。') + '。';
       updateMemory({}, state);
     }
 
