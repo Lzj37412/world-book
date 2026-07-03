@@ -841,44 +841,49 @@ ${input}
 // ---------- 解析 AI 输出（叙事 + \`\`\`state JSON```） ----------
 
 function parseAIOutput(text) {
-  let state = null;
   let narrative = text;
+  let state = null;
+
+  // 轻量 JSON 修复：尝试解析，失败时清除尾随逗号后重试
+  function tryParse(jsonStr) {
+    try { return JSON.parse(jsonStr); }
+    catch (e) {
+      const fixed = jsonStr.replace(/,\s*([}\]])/g, '$1');
+      try { return JSON.parse(fixed); } catch (e2) { return null; }
+    }
+  }
 
   // ① 优先找 <<STATE>>...<<ENDSTATE>> 协议标记（最可靠）
   const markerMatch = text.match(/<<STATE>>\s*\n?([\s\S]*?)<<ENDSTATE>>/);
   if (markerMatch) {
-    try {
-      state = JSON.parse(markerMatch[1].trim());
-      narrative = text.replace(markerMatch[0], '').trim();
-      return { narrative, state };
-    } catch (e) {}
+    state = tryParse(markerMatch[1].trim());
+    narrative = text.replace(markerMatch[0], '').trim();
+    // 无论解析成功与否，标记内容已从 narrative 摘除 → 不会露 Bare JSON
+    return { narrative, state };
   }
 
-  // ② 向下兼容：找 \`\`\`state 或 ```json 代码块
-  const blockMatch = text.match(/```(?:state|json)\s*\n?([\s\S]*?)```/);
+  // ② 找任意 ```...``` 代码块（不限语言标签，不认也清掉）
+  const blockMatch = text.match(/```\w*\s*\n?([\s\S]*?)```/);
   if (blockMatch) {
-    try {
-      state = JSON.parse(blockMatch[1].trim());
-      narrative = text.replace(blockMatch[0], '').trim();
-      return { narrative, state };
-    } catch (e) {}
+    state = tryParse(blockMatch[1].trim());
+    narrative = text.replace(blockMatch[0], '').trim();
+    // 同上：解析失败 narrative 也是干净的 — 宁可丢掉一轮 STATE
+    return { narrative, state };
   }
 
-  // ③ 再降级：从末尾找最后一个 {...} JSON 对象
+  // ③ 末尾 {...} 降级（无代码块时使用）
   const lastClose = text.lastIndexOf('}');
   if (lastClose > 0) {
     const lastOpen = text.lastIndexOf('{', lastClose);
     if (lastOpen >= 0) {
-      const candidate = text.substring(lastOpen, lastClose + 1);
-      try {
-        state = JSON.parse(candidate);
+      state = tryParse(text.substring(lastOpen, lastClose + 1));
+      if (state) {
         narrative = text.substring(0, lastOpen).trim();
         return { narrative, state };
-      } catch (e) {}
+      }
     }
   }
 
-  // ④ 都没找到，state = null
   return { narrative, state };
 }
 
