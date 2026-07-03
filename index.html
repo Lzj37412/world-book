@@ -6,8 +6,23 @@
 <title>AI 记忆沙盒 · 记忆外挂</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: system-ui, 'Segoe UI', sans-serif;
+  body {    } else if (typeof val === 'object' && val !== null) {
+      const entries = Object.entries(val);
+      if (entries.length === 0) {
+        bodyHtml = `<div class="jc-empty">（空）</div>`;
+      } else {
+        count = entries.length;
+        bodyHtml = entries.map(([k, v]) => {
+          const label = `<span class="sub-key">${escHtml(k)}</span>`;
+          if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
+            const sub = Object.entries(v).map(([sk, sv]) =>
+              `<div style="padding-left:12px;font-size:11px"><span class="sub-key">${escHtml(sk)}</span>${escHtml(String(sv))}</div>`
+            ).join('');
+            return `<div class="jc-item">${label}</div>${sub}`;
+          }
+          return `<div class="jc-item">${label}${escHtml(String(v))}</div>`;
+        }).join('');
+      }font-family: system-ui, 'Segoe UI', sans-serif;
     background: #0d1117;
     color: #c9d1d9;
     height: 100vh;
