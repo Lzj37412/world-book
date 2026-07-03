@@ -873,13 +873,18 @@ function parseAIOutput(text) {
 function buildWorldPrompt(form) {
   let prompt = '请根据以下设定直接开始叙事开场：\n\n';
 
-  if (form.world) prompt += `【世界】${form.world}\n`;
-  if (form.player) prompt += `【身份】${form.player}\n`;
-  if (form.npcs) prompt += `【角色】${form.npcs}\n`;
-  if (form.goals) prompt += `【方向】${form.goals}\n`;
-  if (form.scene) prompt += `【开场】${form.scene}\n`;
+  // 叙事式拼接：用第一人称自述替代标签式，AI更易触发沉浸叙事模式
+  const parts = [];
+  if (form.player) parts.push(`我是${form.player}`);
+  if (form.world) parts.push(`这个世界是${form.world}`);
+  if (form.npcs) parts.push(`我认识的人有${form.npcs}`);
+  if (form.goals) parts.push(`我知道这个世界的故事走向是${form.goals}`);
+  if (form.scene) parts.push(form.scene);
 
-  prompt += `\n以前面设定的身份直接展开场景——你能感知到什么、周围正在发生什么。不需要解释世界，呈现一个活着的切片。
+  prompt += `以下是你（穿越者）对这个世界的记忆和认知：\n"`;
+  prompt += parts.join('。') + '。"\n\n';
+
+  prompt += `以一个自然的场景直接开场。不需要解释世界，呈现一个活着的切片。
 用第二人称"你"来叙事，不要用"我"。
 
 最后输出 STATE 快照：
