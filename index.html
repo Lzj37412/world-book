@@ -1246,6 +1246,7 @@ function updateApiStatus() {
 // ---------- 本轮变化 Diff ----------
 
 let _prevMemory = null; // AI 调用前的记忆快照
+let _memoryStack = [];   // STATE 历史栈（用于撤回）
 
 function captureSnapshot(memory) {
   _prevMemory = JSON.parse(JSON.stringify(memory));
@@ -1372,6 +1373,36 @@ function updateTurnCount() {
   el.textContent = current + 1;
 }
 
+// ---------- 撤回 ----------
+
+function retractTurn() {
+  const lastMsg = document.querySelector('#chat-log .msg.user:last-of-type');
+  if (!lastMsg) return;
+
+  // 删除最后一条用户消息及其之后的所有消息
+  let el = lastMsg;
+  const siblings = [];
+  while (el) { siblings.push(el); el = el.nextElementSibling; }
+  for (let i = siblings.length - 1; i >= 0; i--) siblings[i].remove();
+
+  // 弹出最近一轮历史
+  const history = loadRecentHistory();
+  if (history.length > 0) history.pop();
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+
+  // 恢复 STATE
+  if (_memoryStack.length > 0) {
+    const prev = JSON.parse(JSON.stringify(_memoryStack.pop()));
+    saveMemory(prev);
+    renderMemoryView(prev);
+  }
+
+  // 回合数减一
+  const turnEl = document.getElementById('turn-count');
+  const current = parseInt(turnEl.textContent, 10) || 0;
+  if (current > 0) turnEl.textContent = current - 1;
+}
+
 // ---------- 主循环 ----------
 
 async function submitAction() {
@@ -1380,6 +1411,9 @@ async function submitAction() {
   if (!input) return;
   inputEl.value = '';
 
+  // 撤回命令
+  if (input === '撤回') { retractTurn(); return; }
+
   // 1. 显示用户输入
   appendMessage('user', `🧑 ${input}`);
 
@@ -1387,6 +1421,7 @@ async function submitAction() {
   const memory = loadMemory();
   const recentHistory = loadRecentHistory();
   captureSnapshot(memory);
+  _memoryStack.push(JSON.parse(JSON.stringify(memory)));
 
   // 3. AI 生成
   let result;
