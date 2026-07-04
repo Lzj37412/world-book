@@ -1316,7 +1316,8 @@ function displayKey(key) {
     occupation: '职业', current_location: '当前位置', town_activity: '镇子动态',
     environment: '环境', plot_flags: '剧情标记', known_characters: '角色',
     current_events: '当前事件', state_of_affairs: '局势', date: '日期',
-    status: '状态', name: '名称',
+    status: '状态', name: '名称', world_state: '世界状态',
+    key_characters: '主要角色',
   };
   return map[key] || key;
 }
@@ -1335,7 +1336,7 @@ function renderMemoryView(memory) {
   const isCharObj = v => typeof v === 'object' && v !== null && !Array.isArray(v) &&
     Object.keys(v).some(k => /location|state|status|位|状|emotion|情绪/i.test(k));
   const infoKeys = ['world', '世界观', '世界', 'time', '时间', 'date', '日期', 'season', 'age', 'identity', '身份', 'player', 'location', '位置', '地点', 'state', '状态'];
-  const envKeys = ['environment', '环境', 'weather', '天气', 'town_activity'];  const nestedCharKeys = ['known_characters', 'NPC', 'npc', '角色', '主要角色'];
+  const envKeys = ['environment', '环境', 'weather', '天气', 'town_activity'];  const nestedCharKeys = ['known_characters', 'key_characters', 'NPC', 'npc', '角色', '主要角色'];
 
   for (const [key, val] of Object.entries(memory)) {
     if (typeof val === 'boolean') { boolFlags.push([key, val]); }
