@@ -238,6 +238,18 @@
     font-size: 11px;
     padding: 0 10px 8px;
   }
+  .journal-card .jc-subtitle {
+    font-size: 10px; color: #8b949e; margin-left: 4px; flex: 1;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .journal-card .jc-subtitle .jc-loc { color: #58a6ff; }
+  .journal-card .jc-subtitle .jc-summary { color: #8b949e; }
+  .journal-card .jc-flag {
+    display: inline-block; font-size: 10px; padding: 2px 8px;
+    border-radius: 10px; background: #161b22; color: #8b949e;
+  }
+  .journal-card .jc-flag.on { background: #0d4429; color: #7ee787; }
+  .journal-card .jc-flag.off { background: #161b22; color: #484f58; }
   /* 变化日志卡片 */
   .journal-card.diff-card { border-color: #1f3a3f; }
   .journal-card.diff-card .jc-title { color: #58a6ff; }
@@ -1294,6 +1306,19 @@ function renderDiff(changes) {
   el.insertAdjacentHTML('afterbegin', diffHtml);
 }
 
+// ---------- 字段名中英映射（仅显示用，不影响 AI） ----------
+
+function displayKey(key) {
+  const map = {
+    world: '世界', location: '位置', identity: '身份', player: '玩家',
+    time: '时间', weather: '天气', season: '季节', age: '年龄',
+    state: '状态', emotion: '情绪', visible_emotion: '情绪',
+    occupation: '职业', current_location: '当前位置', town_activity: '镇子动态',
+    environment: '环境', plot_flags: '剧情标记', known_characters: '已知角色',
+  };
+  return map[key] || key;
+}
+
 // ---------- 世界日志（卡片式） ----------
 
 function renderMemoryView(memory) {
@@ -1303,28 +1328,85 @@ function renderMemoryView(memory) {
     return;
   }
 
-  let html = '';
-  for (const [key, val] of Object.entries(memory)) {
-    let bodyHtml = flattenValueHTML(val, 0);
-    // 计算粗略条目数（仅用于计数 badge）
-    let count = '';
-    if (Array.isArray(val)) {
-      count = val.length;
-    } else if (typeof val === 'object' && val !== null) {
-      count = Object.keys(val).length;
-    }
+  // 分类
+  const boolFlags = [], worldInfo = [], characters = [], envCards = [], rest = [];
+  const isCharObj = v => typeof v === 'object' && v !== null && !Array.isArray(v) &&
+    Object.keys(v).some(k => /location|state|位|状|emotion|情绪/i.test(k));
+  const infoKeys = ['world', '世界观', '世界', 'time', '时间', 'season', 'age', 'identity', '身份', 'player'];
+  const envKeys = ['environment', '环境', 'weather', '天气', 'town_activity'];
 
+  for (const [key, val] of Object.entries(memory)) {
+    if (typeof val === 'boolean') { boolFlags.push([key, val]); }
+    else if (isCharObj(val)) { characters.push([key, val]); }
+    else if (infoKeys.includes(key)) { worldInfo.push([key, val]); }
+    else if (envKeys.includes(key)) { envCards.push([key, val]); }
+    else { rest.push([key, val]); }
+  }
+
+  let html = '';
+
+  // ① 世界基本信息
+  for (const [key, val] of worldInfo) {
+    html += renderCard(displayKey(key), val);
+  }
+
+  // ② 角色卡片（带 icon 和摘要行）
+  for (const [key, val] of characters) {
+    const icon = key === 'player' || key === '玩家角色' || key === 'identity' ? '🧑' : '👤';
+    const sub = typeof val === 'object' && val ? val : null;
+    let summary = '';
+    if (sub) {
+      const loc = sub.location || sub.当前位置 || sub.位置 || '';
+      const st = sub.state || sub.状态 || '';
+      const em = sub.visible_emotion || sub.情绪 || '';
+      if (loc) summary += `<span class="jc-loc">📍${escHtml(loc)}</span>`;
+      if (st) summary += ` <span class="jc-summary">${escHtml(st)}</span>`;
+    }
     html += `<div class="journal-card">
       <div class="jc-header" onclick="this.nextElementSibling.classList.toggle('collapsed');this.querySelector('.jc-toggle').textContent=this.nextElementSibling.classList.contains('collapsed')?'▶':'▼'">
-        <span class="jc-title">${escHtml(key)}</span>
-        ${count ? `<span class="jc-count">${count}</span>` : ''}
+        <span class="jc-title">${icon} ${escHtml(displayKey(key))}</span>
+        ${summary ? `<span class="jc-subtitle">${summary}</span>` : ''}
         <span class="jc-toggle">▼</span>
       </div>
-      <div class="jc-body">${bodyHtml}</div>
+      <div class="jc-body">${flattenValueHTML(val, 0)}</div>
     </div>`;
   }
 
+  // ③ 环境
+  for (const [key, val] of envCards) {
+    html += renderCard(displayKey(key), val);
+  }
+
+  // ④ 布尔标记（合并为一行标签）
+  if (boolFlags.length > 0) {
+    const tags = boolFlags.map(([k, v]) =>
+      `<span class="jc-flag ${v ? 'on' : 'off'}">${escHtml(displayKey(k))}</span>`
+    ).join(' ');
+    html += `<div class="journal-card"><div class="jc-header" onclick="this.nextElementSibling.classList.toggle('collapsed');this.querySelector('.jc-toggle').textContent=this.nextElementSibling.classList.contains('collapsed')?'▶':'▼'">
+      <span class="jc-title">⚑ 标记</span><span class="jc-count">${boolFlags.length}</span><span class="jc-toggle">▼</span>
+    </div><div class="jc-body" style="display:flex;flex-wrap:wrap;gap:4px;padding-top:6px">${tags}</div></div>`;
+  }
+
+  // ⑤ 其他
+  for (const [key, val] of rest) {
+    html += renderCard(displayKey(key), val);
+  }
+
   el.innerHTML = html;
+}
+
+function renderCard(title, val) {
+  let count = '';
+  if (Array.isArray(val)) count = val.length;
+  else if (typeof val === 'object' && val !== null) count = Object.keys(val).length;
+  return `<div class="journal-card">
+    <div class="jc-header" onclick="this.nextElementSibling.classList.toggle('collapsed');this.querySelector('.jc-toggle').textContent=this.nextElementSibling.classList.contains('collapsed')?'▶':'▼'">
+      <span class="jc-title">${escHtml(title)}</span>
+      ${count ? `<span class="jc-count">${count}</span>` : ''}
+      <span class="jc-toggle">▼</span>
+    </div>
+    <div class="jc-body">${flattenValueHTML(val, 0)}</div>
+  </div>`;
 }
 
 function escHtml(s) {
