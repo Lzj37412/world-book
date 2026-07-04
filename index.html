@@ -1314,7 +1314,9 @@ function displayKey(key) {
     time: '时间', weather: '天气', season: '季节', age: '年龄',
     state: '状态', emotion: '情绪', visible_emotion: '情绪',
     occupation: '职业', current_location: '当前位置', town_activity: '镇子动态',
-    environment: '环境', plot_flags: '剧情标记', known_characters: '已知角色',
+    environment: '环境', plot_flags: '剧情标记', known_characters: '角色',
+    current_events: '当前事件', state_of_affairs: '局势', date: '日期',
+    status: '状态', name: '名称',
   };
   return map[key] || key;
 }
@@ -1331,9 +1333,9 @@ function renderMemoryView(memory) {
   // 分类
   const boolFlags = [], worldInfo = [], characters = [], envCards = [], rest = [];
   const isCharObj = v => typeof v === 'object' && v !== null && !Array.isArray(v) &&
-    Object.keys(v).some(k => /location|state|位|状|emotion|情绪/i.test(k));
-  const infoKeys = ['world', '世界观', '世界', 'time', '时间', 'season', 'age', 'identity', '身份', 'player'];
-  const envKeys = ['environment', '环境', 'weather', '天气', 'town_activity'];
+    Object.keys(v).some(k => /location|state|status|位|状|emotion|情绪/i.test(k));
+  const infoKeys = ['world', '世界观', '世界', 'time', '时间', 'date', '日期', 'season', 'age', 'identity', '身份', 'player', 'location', '位置', '地点', 'state', '状态'];
+  const envKeys = ['environment', '环境', 'weather', '天气', 'town_activity'];  const nestedCharKeys = ['known_characters', 'NPC', 'npc', '角色', '主要角色'];
 
   for (const [key, val] of Object.entries(memory)) {
     if (typeof val === 'boolean') { boolFlags.push([key, val]); }
@@ -1372,12 +1374,39 @@ function renderMemoryView(memory) {
     </div>`;
   }
 
-  // ③ 环境
+  // ③ 嵌套角色（known_characters 等）
+  for (const [key, val] of rest.filter(([k]) => nestedCharKeys.includes(k))) {
+    if (typeof val === 'object' && val !== null) {
+      for (const [subKey, subVal] of Object.entries(val)) {
+        const icon = subKey === 'player' || subKey === '玩家' ? '🧑' : '👤';
+        let summary = '';
+        if (typeof subVal === 'object' && subVal) {
+          const loc = subVal.location || subVal.位置 || '';
+          const st = subVal.state || subVal.status || subVal.状态 || '';
+          if (loc) summary += `<span class="jc-loc">📍${escHtml(loc)}</span>`;
+          if (st) summary += ` <span class="jc-summary">${escHtml(st)}</span>`;
+        }
+        html += `<div class="journal-card">
+          <div class="jc-header" onclick="this.nextElementSibling.classList.toggle('collapsed');this.querySelector('.jc-toggle').textContent=this.nextElementSibling.classList.contains('collapsed')?'▶':'▼'">
+            <span class="jc-title">${icon} ${escHtml(subKey)}</span>
+            ${summary ? `<span class="jc-subtitle">${summary}</span>` : ''}
+            <span class="jc-toggle">▼</span>
+          </div>
+          <div class="jc-body">${flattenValueHTML(subVal, 0)}</div>
+        </div>`;
+      }
+    }
+  }
+
+  // ④ 环境
   for (const [key, val] of envCards) {
     html += renderCard(displayKey(key), val);
   }
 
-  // ④ 布尔标记（合并为一行标签）
+  // 从 rest 中移除已处理的嵌套角色
+  const restFiltered = rest.filter(([k]) => !nestedCharKeys.includes(k));
+
+  // ⑤ 布尔标记（合并为一行标签）
   if (boolFlags.length > 0) {
     const tags = boolFlags.map(([k, v]) =>
       `<span class="jc-flag ${v ? 'on' : 'off'}">${escHtml(displayKey(k))}</span>`
@@ -1387,8 +1416,8 @@ function renderMemoryView(memory) {
     </div><div class="jc-body" style="display:flex;flex-wrap:wrap;gap:4px;padding-top:6px">${tags}</div></div>`;
   }
 
-  // ⑤ 其他
-  for (const [key, val] of rest) {
+  // ⑥ 其他
+  for (const [key, val] of restFiltered) {
     html += renderCard(displayKey(key), val);
   }
 
