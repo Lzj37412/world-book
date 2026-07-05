@@ -1012,7 +1012,7 @@ function buildWorldPrompt(form) {
 "`;
         prompt += parts.join('。');
         if (form.scene) prompt += `。${form.scene}`;
-        prompt += '"
+        prompt += `"
 
 直接呈现一个活着的切片——描述这个世界此刻正在发生什么。
 不需要"你"这个人称，观察者不在世界内。
@@ -1036,7 +1036,7 @@ function buildWorldPrompt(form) {
 "`;
       prompt += parts.join('。');
       if (form.scene) prompt += `。${form.scene}`;
-      prompt += '"
+      `rompt += '"
 
 以一个自然的场景直接开场。不需要解释世界，呈现一个活着的切片。
 用第二人称"你"来叙事（指玩家角色），不要用"我"。
