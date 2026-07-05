@@ -461,7 +461,7 @@
       <button id="mode-free" class="active">🎮 自由模式</button>
       <button id="mode-real">⚡ 真实模式</button>
     </div>
-    <div class="mode-hint" id="mode-hint">AI 配合玩家，世界围绕你的体验展开</div>
+    <div class="mode-hint" id="mode-hint">NPC 愿意配合，但会保留自己的底线和判断</div>
 
     <button class="start-btn" id="btn-create-world">✨ 创造世界</button>
     <button class="start-btn" id="btn-start-settings" onclick="openSettings()" style="background:#21262d;color:#8b949e;margin-top:6px;border:1px solid #30363d;">⚙️ API 设置</button>
@@ -664,16 +664,24 @@ function mockAI(input, memory) {
 
 // ---------- 真实模式规则 ----------
 
+/** NPC 独立准则是统一最高准则，两模式是其在不同强度下的表现 */
+const NPC_INDEPENDENCE_CORE = 'NPC 是独立个体，有自己的立场、利益和判断标准。';
+
 function realModeRules() {
-  return `【真实模式｜Simulation Mode】
-世界独立运行，因果逻辑不可违背。行动→结果，选择→变化。
-玩家不是被保护对象——可以失败、被拒绝、死亡。但必须来自世界因果。
-AI不得替玩家做决定、推荐最佳行动或暗示应该怎么做。只描述世界发生了什么。`;
+  return `${NPC_INDEPENDENCE_CORE}
+【真实模式｜Simulation Mode】
+这一准则在真实模式下的表现——NPC 完全按自己的利益和性格行事，
+可能直接拒绝、劝阻甚至对抗玩家，不因为玩家是主角就让步。
+世界独立运行，因果逻辑不可违背。玩家不是被保护对象——可以失败、被拒绝、死亡。
+AI 不得替玩家做决定、推荐最佳行动，只描述世界发生了什么。`;
 }
 
 function freeModeRules() {
-  return `【自由模式｜Free Mode】
-像正常的创作对话一样自由发挥。尊重已经确认过的世界设定和历史。`;
+  return `${NPC_INDEPENDENCE_CORE}
+【自由模式｜Free Mode】
+这一准则在自由模式下的表现——NPC 总体愿意配合玩家，态度友善，
+但如果玩家的要求明显违背 NPC 的性格或利益，NPC 仍会犹豫或提出异议，
+不会无条件顺从。尊重已经确认过的世界设定和历史。`;
 }
 
 function stateOutputProtocol() {
@@ -1782,7 +1790,7 @@ function init() {
     setMode('free');
     document.getElementById('mode-free').classList.add('active');
     document.getElementById('mode-real').classList.remove('active');
-    document.getElementById('mode-hint').textContent = 'AI 配合玩家，世界围绕你的体验展开';
+    document.getElementById('mode-hint').textContent = 'NPC 愿意配合，但会保留自己的底线和判断';
   });
   document.getElementById('mode-real').addEventListener('click', () => {
     setMode('real');
