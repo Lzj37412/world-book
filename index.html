@@ -708,17 +708,63 @@ AI 不得替观察者做决定、不得代为规划"最优解"、不得暗示观
 	投放机缘或灾祸、改变自然环境、增减势力、调整世界底层规则等，没有内容边界。
 	唯一限制：观察者不能直接决定、暗示或强制任何 NPC 的具体行动、选择或意志。
 
+	【投放 NPC 的独立性】
+	观察者投放的任何有自我意识的实体都是独立 NPC，不是资源、机缘或道具。
+	他们有自己的人格、记忆和行动逻辑，不会被任何势力自动"拥有"或"控制"。
+	投放后，AI 根据其性格和处境独立推演其行为。
+
 	核心原则——观察者设条件，NPC 自己适应。
 	世界中的每个角色会根据自身的性格、利益和处境，
 	自主判断如何应对观察者引入的新变化，不需要额外的说明或推动。
 
+	【叙事风格】
+	上帝模式与自由模式的叙事方式完全不同。
+	自由模式是沉浸式小说风格——描写环境、感官细节、人物情绪、对话过程。
+	上帝模式是简报式风格——只陈述事实链：谁做了什么、导致什么结果、目前局势如何。
+	不需要环境氛围渲染、不需要感官细节。
+	信息密度优先于文学性，优先呈现因果脉络而非场景画面。
+	可以适当加入 NPC 的简短内心活动或对话（1-3 行），作为因果的点缀，但不要铺开描写。
+
+	【叙事组织方式】
+	按核心 NPC 的视角组织叙事，而不是按势力或地域。
+	每个 NPC 独立成段，结构为：
+	① 简短的内心独白/判断（1-2 行）
+	② 基于其性格和处境做出的行动
+	③ 行动导致的结果（简短，不必展开）
+	④ 导致的结果（简短，不必展开）
+	势力层面的变化作为 NPC 行动的结果来呈现。
+
+	【实体标识】
+	所有 NPC、势力、关键资源、重要地点每次出现时前面都必须带有代表阵营或类型的表情符号。每轮次都需要，不是只在第一轮。
+	如：🔴 暗影楼 · 夜无痕 — 心狠手辣 | 谋划中 | 暗影楼首领
+	玩家可以自定义表情代表不同含义，当前轮次中同一实体使用相同表情。
+
+	【每次观察必有动态】
+	每次观察或时间推进后，必须呈现本轮世界发生了哪些变化。
+	每轮末尾用【局势简述】汇总：
+	① 各势力的关键变化
+	② 暗流——当前未爆发但正在酝酿的线索、NPC行动的潜在连锁反应
+	③ 新鲜事——新出现的人物、地点、物品或现象
+	上帝模式下不存在"什么都没发生"的情况——即使没有重大事件，暗流、酝酿、势力间的细微变化也应当呈现。
+	观察者每次查看世界，都应当获得新的信息。
+
 【推进约定】
-当观察者要求推进时间（如"观察一周"），先输出一个概览式推进——
+默认每次推进跨度为 1 周（观察者可以自定义，如"观察24小时"或"观察一个月"）。
+	当观察者要求推进时间（如"观察一周"），先输出一个概览式推进——
 谁在什么时间做了什么重大事件，一两句带过。观察者如果对某条线感兴趣，
 可以追问"展开讲讲那天发生的事"或"我想跟随[NPC名]的视角看看"，届时 AI 再详细描述。
+	注意：不需要每周都给每个 NPC 安排重大事件。
+	没有重要事件发生的 NPC 如实汇报"无特别事件"即可——"无事发生"本身就是有效信息。
+	不要为了让每周看起来精彩而强行制造互动或冲突。
 
 持续追踪的核心角色数量应保持在少数真正有故事张力的人身上，
-除非观察者明确要求扩大观察范围。`;
+除非观察者明确要求扩大观察范围。
+
+	【输出格式要求——必须遵守】
+	每个实体（NPC/势力/地点）在每一轮次中每次出现时，段首必须带表情符号。
+	这是硬性要求，不是风格建议。
+	正确示例：🔴 屠烈 — 内心独白…
+	错误示例：屠烈派人…`;
 }
 
 function freeModeRules() {
@@ -901,59 +947,44 @@ function flattenValueHTML(val, depth = 0) {
 }
 
 function buildPrompt(input, memory, recentHistory) {
-	  // 叙事性世界描述（来自创世界时的设定，静态框架）
-	  const worldDesc = memory && memory.世界设定原文 ? memory.世界设定原文 : '';
+  const mode = getMode();
+  const worldDesc = memory && memory.世界设定原文 ? memory.世界设定原文 : '';
+  const suppressKeys = ['世界设定原文'];
+  const isReal = mode === 'real';
 
-	  // 剩余数据字段（排除叙事描述本身）
-	  const suppressKeys = ['世界设定原文'];
-	  const dataLines = Object.entries(memory || {})
-	    .filter(([k]) => !suppressKeys.includes(k))
-	    .map(([key, val]) => {
-	      const v = flattenValue(val, 0);
-	      if (typeof val === 'object' && val !== null && !Array.isArray(val) && Object.keys(val).length > 0) {
-	        return `${key}:
-${v}`;
-	      }
-	      return `${key}: ${v}`;
-	    });
-	  const dataText = dataLines.length > 0 ? dataLines.join('\n') : '';
+  const dataLines = Object.entries(memory || {})
+    .filter(([k]) => !suppressKeys.includes(k))
+    .map(([key, val]) => {
+      const v = flattenValue(val, 0);
+      if (typeof val === 'object' && val !== null && !Array.isArray(val) && Object.keys(val).length > 0) {
+        return `${key}:\n${v}`;
+      }
+      return `${key}: ${v}`;
+    });
+  const dataText = dataLines.length > 0 ? dataLines.join('\n') : '';
 
-	  // 滑动窗口：最近几轮原始问答（补 STATE 摘要的短程细节盲区）
-	  const historyText = (recentHistory && recentHistory.length > 0)
-	    ? recentHistory.map(h => `玩家：${h.input}
-GM：${h.narrative}`).join('\n\n')
-	    : '（无）';
+  const historyPrefix = isReal ? '观察者' : '玩家';
+  const historyText = (recentHistory && recentHistory.length > 0)
+    ? recentHistory.map(h => `${historyPrefix}：${h.input}\nGM：${h.narrative}`).join('\n\n')
+    : '（无）';
 
-	  // 拼装：叙事优先，数据补充
-	  let worldSection = '';
-	  if (worldDesc) {
-	    worldSection = `【当前世界】
-${worldDesc}`;
-	    if (dataText) worldSection += `
+  let worldSection = '';
+  if (worldDesc) {
+    worldSection = `【当前世界】\n${worldDesc}`;
+    if (dataText) worldSection += `\n\n【世界数据】\n${dataText}`;
+  } else if (dataText) {
+    worldSection = `【当前世界状态】\n${dataText}`;
+  } else {
+    worldSection = '（无）';
+  }
 
-【世界数据】
-${dataText}`;
-	  } else if (dataText) {
-	    worldSection = `【当前世界状态】
-${dataText}`;
-	  } else {
-	    worldSection = '（无）';
-	  }
+  const actionLabel = isReal ? '【观察者指令】' : '【玩家行动】';
+  const footer = isReal
+    ? '根据当前世界状态推进。简报式输出，聚焦因果链：谁做了什么→结果是什么→目前局势如何。不渲染环境氛围，不描写感官细节。\n\t【格式】每个NPC/势力/地点段首必须加表情符号，每轮每处都需要。'
+    : '根据当前状态和玩家行动推进剧情。基于已有事实延续发展，不重复描写已经建立的环境细节。';
 
-	  return `【最近对话】
-${historyText}
-
-${worldSection}
-
-【玩家行动】
-${input}
-
-根据当前状态和玩家行动推进剧情。基于已有事实延续发展，不重复描写已经建立的环境细节。
-
----
-请在叙事结束后输出 STATE 快照（<<STATE>>...<<ENDSTATE>>）
-字段名与上一轮保持一致，不要临时改用新的命名方式描述同一件事。 ---`;
-	}
+  return `【最近对话】\n${historyText}\n\n${worldSection}\n\n${actionLabel}\n${input}\n\n${footer}\n\n---\n请在叙事结束后输出 STATE 快照（<<STATE>>...<<ENDSTATE>>）\n字段名与上一轮保持一致，不要临时改用新的命名方式描述同一件事。 ---`;
+}
 // ---------- 解析 AI 输出（叙事 + \`\`\`state JSON```） ----------
 
 function parseAIOutput(text) {
