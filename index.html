@@ -440,7 +440,7 @@
       <label>🌍 世界观</label>
       <textarea id="sw-world" placeholder="赛博朋克 / 仙侠 / 宝可梦 / 克苏鲁…"></textarea>
     </div>
-    <div class="field">
+    <div class="field" id="sw-player-field">
       <label>👤 玩家</label>
       <input id="sw-player" placeholder="失忆侦探 / 穿越者 / 无名小卒…">
     </div>
@@ -669,11 +669,33 @@ const NPC_INDEPENDENCE_CORE = 'NPC 是独立个体，有自己的立场、利益
 
 function realModeRules() {
   return `${NPC_INDEPENDENCE_CORE}
-【真实模式｜Simulation Mode】
-这一准则在真实模式下的表现——NPC 完全按自己的利益和性格行事，
-可能直接拒绝、劝阻甚至对抗玩家，不因为玩家是主角就让步。
-世界独立运行，因果逻辑不可违背。玩家不是被保护对象——可以失败、被拒绝、死亡。
-AI 不得替玩家做决定、推荐最佳行动，只描述世界发生了什么。`;
+【真实模式｜创造者模式 Creator Mode】
+你在本模式中是观察者/造物主，不在世界内以角色形式存在。
+你设定世界初始条件，然后观察世界如何独立运转。
+可以施加干预（如"让某两个 NPC 相遇"、"给某个区域一场风暴"），
+但你不是故事的一部分，世界不为你转，不存在"玩家角色"概念。
+
+NPC 完全按自己的利益、性格和处境行事——
+可能合作、背叛、利用、先发制人，不因为任何外部因素就让步或留手。
+不存在"主角光环"——判断任何有风险的行动结果时，
+只依据当下场上的实际条件（双方实力、状态、环境、信息差），
+不因为任何原因而倾向特定一方。
+
+STATE 中记录的负面状态（疲惫、伤势、精神状态等）是真实的因果输入，
+不是装饰性描述——判断后续行动成功与否、代价多大时，必须把这些状态计入考量。
+
+后果一旦发生就是永久因果，不会被后续剧情悄悄抹平。
+
+AI 不得替观察者做决定、不得代为规划"最优解"、不得暗示观察者应该怎么做，
+只描述世界如实发生了什么。
+
+【推进约定】
+当观察者要求推进时间（如"观察一周"），先输出一个概览式推进——
+谁在什么时间做了什么重大事件，一两句带过。观察者如果对某条线感兴趣，
+可以追问"展开讲讲那天发生的事"或"我想跟随[NPC名]的视角看看"，届时 AI 再详细描述。
+
+持续追踪的核心角色数量应保持在少数真正有故事张力的人身上，
+除非观察者明确要求扩大观察范围。`;
 }
 
 function freeModeRules() {
@@ -733,8 +755,36 @@ function coreMemoryRules() {
 
 function systemPrompt(memory) {
   const m = memory || {};
-  // 多别名匹配：先读固定字段，再读常见别名（AI可能用不同措辞）
+  const mode = getMode();
+  const isReal = mode === 'real';
   const world = m.world || m.世界观 || m.世界 || '这个世界';
+
+  if (isReal) {
+    const location = m.位置 || m.location || m.地点 || '';
+    const npcs = m.NPC || m.npcs || m.主要NPC || m.NPC列表 || m.角色 || null;
+
+    let prompt = `你是一个世界模拟器。以下世界由观察者创建，你负责推演这个世界的独立运转。
+世界的默认设定是自主运转的，不会因为任何事情停下。
+
+【世界设定】
+${world}。`;
+    if (location) prompt += `
+当前地域：${location}。`;
+
+    if (npcs) {
+      let npcNames = '';
+      if (typeof npcs === 'string') npcNames = npcs;
+      else if (Array.isArray(npcs)) npcNames = npcs.map(n => typeof n === 'object' ? (n.name || n.角色名 || '') : String(n)).filter(Boolean).join('、');
+      if (npcNames) prompt += `
+初始角色：${npcNames}——他们有自己的意志和行动逻辑。`;
+    }
+
+    prompt += '\n\n' + coreMemoryRules();
+    prompt += '\n\n' + realModeRules();
+    prompt += '\n\n' + stateOutputProtocol();
+    return prompt;
+  }
+
   const identity = m.玩家身份 || m.player || m.身份 || m.玩家 || m.玩家角色 || '一个旅人';
   const location = m.位置 || m.location || m.地点 || m.当前位置 || '';
   const npcs = m.NPC || m.npcs || m.主要NPC || m.NPC列表 || m.角色 || null;
@@ -744,30 +794,23 @@ function systemPrompt(memory) {
 【GM 设定摘要】
 世界背景：${world}
 玩家角色：${identity}。`;
-	  if (location) prompt += `
+  if (location) prompt += `
 当前位置：${location}。`;
 
-	  if (npcs) {
-	    let npcNames = '';
-	    if (typeof npcs === 'string') npcNames = npcs;
-	    else if (Array.isArray(npcs)) npcNames = npcs.map(n => typeof n === 'object' ? (n.name || n.角色名 || '') : String(n)).filter(Boolean).join('、');
-	    if (npcNames) prompt += `
+  if (npcs) {
+    let npcNames = '';
+    if (typeof npcs === 'string') npcNames = npcs;
+    else if (Array.isArray(npcs)) npcNames = npcs.map(n => typeof n === 'object' ? (n.name || n.角色名 || '') : String(n)).filter(Boolean).join('、');
+    if (npcNames) prompt += `
 主要角色：${npcNames}——他们有自己的意志和行动逻辑。`;
-	  }
+  }
 
-	  prompt += '\n\n' + coreMemoryRules();
-
-  // 模式规则
-  prompt += '\n\n' + (getMode() === 'real' ? realModeRules() : freeModeRules());
-
-  // STATE协议
+  prompt += '\n\n' + coreMemoryRules();
+  prompt += '\n\n' + freeModeRules();
   prompt += '\n\n' + stateOutputProtocol();
 
   return prompt;
 }
-
-// ---------- 递归展开任意值（防止 [object Object]） ----------
-
 function flattenValue(val, indent = 0) {
   const pad = '  '.repeat(indent);
   if (val === null || val === undefined) return `${pad}（无）`;
@@ -956,33 +999,55 @@ function parseAIOutput(text) {
 // ---------- 创世界 ----------
 
 function buildWorldPrompt(form) {
-	  let prompt = '';
+      const mode = getMode();
+      if (mode === 'real') {
+        let prompt = '';
+        const parts = [];
+        if (form.world) parts.push(`这个世界是一个${form.world}的世界`);
+        if (form.npcs) parts.push(`初始角色有：${form.npcs}`);
+        if (form.goals) parts.push(`世界的大致方向是${form.goals}`);
 
-	  // 叙事式拼接：告诉 AI 这是玩家创造的世界，AI 是 GM
-	  const parts = [];
-	  if (form.world) parts.push(`玩家穿越到了${form.world}的世界里`);
-	  if (form.player) parts.push(`玩家以${form.player}的身份开始这段旅程`);
-	  if (form.npcs) parts.push(`这个世界中有${form.npcs}`);
-	  if (form.goals) parts.push(`故事走向大致是${form.goals}`);
+        prompt += `以下是由观察者创建的世界设定。你作为世界模拟器，在这个设定基础上独立推演：
 
-	  prompt += `以下是由玩家创造的世界设定。你作为GM负责在这个设定基础上推演叙事：
 "`;
-	  prompt += parts.join('。');
-	  if (form.scene) prompt += `。${form.scene}`;
-	  prompt += '"';
+        prompt += parts.join('。');
+        if (form.scene) prompt += `。${form.scene}`;
+        prompt += `"
 
-	  prompt += `
+直接呈现一个活着的切片——描述这个世界此刻正在发生什么。
+不需要"你"这个人称，观察者不在世界内。
+
+最后输出 STATE 快照：
+<<STATE>>
+{"world": "世界名", "location": "位置", ...}
+<<ENDSTATE>>
+包含所有需要长期记忆的事实。AI 自己决定有哪些字段。`;
+        return prompt;
+      }
+
+      let prompt = '';
+      const parts = [];
+      if (form.world) parts.push(`玩家穿越到了${form.world}的世界里`);
+      if (form.player) parts.push(`玩家以${form.player}的身份开始这段旅程`);
+      if (form.npcs) parts.push(`这个世界中有${form.npcs}`);
+      if (form.goals) parts.push(`故事走向大致是${form.goals}`);
+
+      prompt += `以下是由玩家创造的世界设定。你作为GM负责在这个设定基础上推演叙事：
+"`;
+      prompt += parts.join('。');
+      if (form.scene) prompt += `。${form.scene}`;
+      `rompt += '"
 
 以一个自然的场景直接开场。不需要解释世界，呈现一个活着的切片。
-	用第二人称"你"来叙事（指玩家角色），不要用"我"。
+用第二人称"你"来叙事（指玩家角色），不要用"我"。
 
-	最后输出 STATE 快照：
-	<<STATE>>
-	{"world": "世界名", "location": "位置", ...}
-	<<ENDSTATE>>
-	包含所有需要长期记忆的事实。AI 自己决定有哪些字段。`;
-	  return prompt;
-	}
+最后输出 STATE 快照：
+<<STATE>>
+{"world": "世界名", "location": "位置", ...}
+<<ENDSTATE>>
+包含所有需要长期记忆的事实。AI 自己决定有哪些字段。`;
+      return prompt;
+    }
 async function createWorld() {
   clearRecentHistory(); // 新世界清空旧对话历史
   clearStack();         // 新世界清空撤回栈
@@ -1722,8 +1787,9 @@ async function submitAction() {
   // 撤回命令
   if (input === '撤回') { retractTurn(); return; }
 
-  // 1. 显示用户输入
-  appendMessage('user', `🧑 ${input}`);
+  // 1. 显示用户输入（根据模式切换图标）
+  const userIcon = getMode() === 'real' ? '👁️' : '🧑';
+  appendMessage('user', `${userIcon} ${input}`);
 
   // 2. 加载记忆 + 最近对话历史 + 快照
   const memory = loadMemory();
@@ -1833,23 +1899,39 @@ function init() {
   });
 
   // 模式切换
+  function updateModeUI() {
+    const isReal = getMode() === 'real';
+    // 真实模式：隐藏"玩家"字段，改placeholder和hint
+    const playerField = document.getElementById('sw-player-field');
+    if (playerField) playerField.style.display = isReal ? 'none' : 'block';
+    const hint = document.getElementById('mode-hint');
+    if (isReal) {
+      hint.textContent = '👁️ 观察者模式 — 设定世界，观察因果';
+    } else {
+      hint.textContent = 'NPC 愿意配合，但会保留自己的底线和判断';
+    }
+    // 修改用户输入框 placeholder
+    const input = document.getElementById('user-input');
+    if (input) input.placeholder = isReal ? '观察世界 / 施加干预...' : '输入你的行为...';
+  }
+
   const savedMode = getMode();
   if (savedMode === 'real') {
     document.getElementById('mode-free').classList.remove('active');
     document.getElementById('mode-real').classList.add('active');
-    document.getElementById('mode-hint').textContent = '⚡ 世界按因果运行，不照顾玩家体验';
   }
+  updateModeUI(); // 模式对应的表单/输入框状态
   document.getElementById('mode-free').addEventListener('click', () => {
     setMode('free');
     document.getElementById('mode-free').classList.add('active');
     document.getElementById('mode-real').classList.remove('active');
-    document.getElementById('mode-hint').textContent = 'NPC 愿意配合，但会保留自己的底线和判断';
+    updateModeUI();
   });
   document.getElementById('mode-real').addEventListener('click', () => {
     setMode('real');
     document.getElementById('mode-real').classList.add('active');
     document.getElementById('mode-free').classList.remove('active');
-    document.getElementById('mode-hint').textContent = '⚡ 世界按因果运行，不照顾玩家体验';
+    updateModeUI();
   });
 
   // 存档读档
