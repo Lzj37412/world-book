@@ -712,6 +712,13 @@ AI 不得替观察者做决定、不得代为规划"最优解"、不得暗示观
 	世界中的每个角色会根据自身的性格、利益和处境，
 	自主判断如何应对观察者引入的新变化，不需要额外的说明或推动。
 
+	【叙事风格】
+	上帝模式与自由模式的叙事方式完全不同。
+	自由模式是沉浸式小说风格——描写环境、感官细节、人物情绪、对话过程。
+	上帝模式是简报式风格——只陈述事实链：谁做了什么、导致什么结果、目前局势如何。
+	不需要环境氛围渲染、不需要对话逐字描写、不需要感官细节。
+	优先呈现因果脉络而非场景画面。信息密度优先于文学性。
+
 【推进约定】
 当观察者要求推进时间（如"观察一周"），先输出一个概览式推进——
 谁在什么时间做了什么重大事件，一两句带过。观察者如果对某条线感兴趣，
@@ -901,59 +908,44 @@ function flattenValueHTML(val, depth = 0) {
 }
 
 function buildPrompt(input, memory, recentHistory) {
-	  // 叙事性世界描述（来自创世界时的设定，静态框架）
-	  const worldDesc = memory && memory.世界设定原文 ? memory.世界设定原文 : '';
+  const mode = getMode();
+  const worldDesc = memory && memory.世界设定原文 ? memory.世界设定原文 : '';
+  const suppressKeys = ['世界设定原文'];
+  const isReal = mode === 'real';
 
-	  // 剩余数据字段（排除叙事描述本身）
-	  const suppressKeys = ['世界设定原文'];
-	  const dataLines = Object.entries(memory || {})
-	    .filter(([k]) => !suppressKeys.includes(k))
-	    .map(([key, val]) => {
-	      const v = flattenValue(val, 0);
-	      if (typeof val === 'object' && val !== null && !Array.isArray(val) && Object.keys(val).length > 0) {
-	        return `${key}:
-${v}`;
-	      }
-	      return `${key}: ${v}`;
-	    });
-	  const dataText = dataLines.length > 0 ? dataLines.join('\n') : '';
+  const dataLines = Object.entries(memory || {})
+    .filter(([k]) => !suppressKeys.includes(k))
+    .map(([key, val]) => {
+      const v = flattenValue(val, 0);
+      if (typeof val === 'object' && val !== null && !Array.isArray(val) && Object.keys(val).length > 0) {
+        return `${key}:\n${v}`;
+      }
+      return `${key}: ${v}`;
+    });
+  const dataText = dataLines.length > 0 ? dataLines.join('\n') : '';
 
-	  // 滑动窗口：最近几轮原始问答（补 STATE 摘要的短程细节盲区）
-	  const historyText = (recentHistory && recentHistory.length > 0)
-	    ? recentHistory.map(h => `玩家：${h.input}
-GM：${h.narrative}`).join('\n\n')
-	    : '（无）';
+  const historyPrefix = isReal ? '观察者' : '玩家';
+  const historyText = (recentHistory && recentHistory.length > 0)
+    ? recentHistory.map(h => `${historyPrefix}：${h.input}\nGM：${h.narrative}`).join('\n\n')
+    : '（无）';
 
-	  // 拼装：叙事优先，数据补充
-	  let worldSection = '';
-	  if (worldDesc) {
-	    worldSection = `【当前世界】
-${worldDesc}`;
-	    if (dataText) worldSection += `
+  let worldSection = '';
+  if (worldDesc) {
+    worldSection = `【当前世界】\n${worldDesc}`;
+    if (dataText) worldSection += `\n\n【世界数据】\n${dataText}`;
+  } else if (dataText) {
+    worldSection = `【当前世界状态】\n${dataText}`;
+  } else {
+    worldSection = '（无）';
+  }
 
-【世界数据】
-${dataText}`;
-	  } else if (dataText) {
-	    worldSection = `【当前世界状态】
-${dataText}`;
-	  } else {
-	    worldSection = '（无）';
-	  }
+  const actionLabel = isReal ? '【观察者指令】' : '【玩家行动】';
+  const footer = isReal
+    ? '根据当前世界状态推进。简报式输出，聚焦因果链：谁做了什么→结果是什么→目前局势如何。不渲染环境氛围，不描写感官细节。'
+    : '根据当前状态和玩家行动推进剧情。基于已有事实延续发展，不重复描写已经建立的环境细节。';
 
-	  return `【最近对话】
-${historyText}
-
-${worldSection}
-
-【玩家行动】
-${input}
-
-根据当前状态和玩家行动推进剧情。基于已有事实延续发展，不重复描写已经建立的环境细节。
-
----
-请在叙事结束后输出 STATE 快照（<<STATE>>...<<ENDSTATE>>）
-字段名与上一轮保持一致，不要临时改用新的命名方式描述同一件事。 ---`;
-	}
+  return `【最近对话】\n${historyText}\n\n${worldSection}\n\n${actionLabel}\n${input}\n\n${footer}\n\n---\n请在叙事结束后输出 STATE 快照（<<STATE>>...<<ENDSTATE>>）\n字段名与上一轮保持一致，不要临时改用新的命名方式描述同一件事。 ---`;
+}
 // ---------- 解析 AI 输出（叙事 + \`\`\`state JSON```） ----------
 
 function parseAIOutput(text) {
