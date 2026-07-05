@@ -459,7 +459,7 @@
 
     <div class="mode-toggle">
       <button id="mode-free" class="active">🎮 自由模式</button>
-      <button id="mode-real">⚡ 真实模式</button>
+      <button id="mode-real">👁️ 上帝模式</button>
     </div>
     <div class="mode-hint" id="mode-hint">NPC 愿意配合，但会保留自己的底线和判断</div>
 
@@ -662,14 +662,14 @@ function mockAI(input, memory) {
   return { text: narrative, state: null };
 }
 
-// ---------- 真实模式规则 ----------
+// ---------- 上帝模式规则 ----------
 
 /** NPC 独立准则是统一最高准则，两模式是其在不同强度下的表现 */
 const NPC_INDEPENDENCE_CORE = 'NPC 是独立个体，有自己的立场、利益和判断标准。';
 
 function realModeRules() {
   return `${NPC_INDEPENDENCE_CORE}
-【真实模式｜创造者模式 Creator Mode】
+【上帝模式｜God Mode】
 你在本模式中是观察者/造物主，不在世界内以角色形式存在。
 你设定世界初始条件，然后观察世界如何独立运转。
 可以施加干预（如"让某两个 NPC 相遇"、"给某个区域一场风暴"），
@@ -1924,12 +1924,12 @@ function init() {
   // 模式切换
   function updateModeUI() {
     const isReal = getMode() === 'real';
-    // 真实模式：隐藏"玩家"字段，改placeholder和hint
+    // 上帝模式：隐藏"玩家"字段，改placeholder和hint
     const playerField = document.getElementById('sw-player-field');
     if (playerField) playerField.style.display = isReal ? 'none' : 'block';
     const hint = document.getElementById('mode-hint');
     if (isReal) {
-      hint.textContent = '👁️ 观察者模式 — 设定世界，观察因果';
+      hint.textContent = '👁️ 上帝模式 — 设定世界，观察因果';
     } else {
       hint.textContent = 'NPC 愿意配合，但会保留自己的底线和判断';
     }
