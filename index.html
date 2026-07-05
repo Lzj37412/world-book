@@ -147,29 +147,35 @@
     overflow: hidden;
   }
   #memory-header {
-    padding: 12px 16px;
+    padding: 8px 12px;
     font-size: 13px;
     color: #8b949e;
     border-bottom: 1px solid #30363d;
     background: #0d1117;
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 4px;
   }
-  #memory-header span { color: #7ee787; }
-  #clear-btn {
+  #memory-header > span:first-child { flex-shrink: 0; }
+  #memory-header .hd-label { flex: 1; color: #7ee787; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #clear-btn, #export-btn, #import-btn {
     background: transparent;
     border: 1px solid #30363d;
     color: #8b949e;
     border-radius: 6px;
-    padding: 2px 10px;
-    font-size: 11px;
+    padding: 2px 8px;
+    font-size: 12px;
     cursor: pointer;
     transition: all .2s;
+    flex-shrink: 0;
   }
   #clear-btn:hover {
     border-color: #da3633;
     color: #da3633;
+  }
+  #export-btn:hover, #import-btn:hover {
+    border-color: #58a6ff;
+    color: #58a6ff;
   }
   #memory-view {
     flex: 1;
@@ -482,9 +488,12 @@
   <!-- 记忆面板 -->
   <div id="memory-area">
     <div id="memory-header">
-      📖 <span>世界日志</span>
+      📖 <span class="hd-label">世界日志</span>
+      <button id="export-btn" title="导出记忆为 JSON">📤</button>
+      <button id="import-btn" title="导入记忆 JSON">📥</button>
       <button id="clear-btn">清除</button>
     </div>
+    <input type="file" id="import-file" accept=".json" style="display:none">
     <div id="memory-view"></div>
     <div id="memory-turn">回合 #<span id="turn-count">0</span></div>
   </div>
@@ -508,7 +517,7 @@
     <h2>⚙️ AI 设置</h2>
     <div class="field">
       <label>接口</label>
-      <select id="cfg-provider" onchange="var ep=document.getElementById('cfg-endpoint'),md=document.getElementById('cfg-model');switch(this.value){case'ds':ep.value='https://api.deepseek.com/v1/chat/completions';md.value='deepseek-chat';break;case'sf':ep.value='https://api.siliconflow.cn/v1/chat/completions';md.value='Qwen/Qwen3.6-35B-A3B';break;case'or':ep.value='https://openrouter.ai/api/v1/chat/completions';md.value='google/gemma-4-26b-a4b-it:free';break;case'zhipu':ep.value='https://open.bigmodel.cn/api/paas/v4/chat/completions';md.value='glm-4-flash';break;case'gemini':ep.value='https://generativelanguage.googleapis.com';md.value='gemini-2.0-flash';break;default:ep.value='';md.value=''}" style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 12px;color:#c9d1d9;font-size:13px;outline:none;font-family:inherit">
+      <select id="cfg-provider" onchange="onProviderChange(this,'cfg-')" style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 12px;color:#c9d1d9;font-size:13px;outline:none;font-family:inherit">
         <option value="ds">DeepSeek 官方</option>
         <option value="sf">硅基流动 SiliconFlow</option>
         <option value="or">OpenRouter</option>
@@ -527,7 +536,8 @@
     </div>
     <div class="field">
       <label>模型</label>
-      <input type="text" id="cfg-model" placeholder="deepseek-chat / gemini-2.0-flash" value="deepseek-chat">
+      <input list="cfg-model-list" id="cfg-model" placeholder="deepseek-chat" style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 12px;color:#c9d1d9;font-size:13px;outline:none;font-family:inherit">
+      <datalist id="cfg-model-list"></datalist>
     </div>
 
     <!-- 🌍 创建世界专用模型 -->
@@ -540,7 +550,7 @@
     <div id="cfg-wc-fields" style="display:none">
       <div class="field">
         <label>创世界·接口</label>
-        <select id="cfg-wc-provider" onchange="var ep=document.getElementById('cfg-wc-endpoint'),md=document.getElementById('cfg-wc-model');switch(this.value){case'ds':ep.value='https://api.deepseek.com/v1/chat/completions';md.value='deepseek-chat';break;case'sf':ep.value='https://api.siliconflow.cn/v1/chat/completions';md.value='Qwen/Qwen3.6-35B-A3B';break;case'or':ep.value='https://openrouter.ai/api/v1/chat/completions';md.value='google/gemma-4-26b-a4b-it:free';break;case'zhipu':ep.value='https://open.bigmodel.cn/api/paas/v4/chat/completions';md.value='glm-4-flash';break;case'gemini':ep.value='https://generativelanguage.googleapis.com';md.value='gemini-2.0-flash';break;default:ep.value='';md.value=''}" style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 12px;color:#c9d1d9;font-size:13px;outline:none;font-family:inherit">
+        <select id="cfg-wc-provider" onchange="onProviderChange(this,'cfg-wc-')" style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 12px;color:#c9d1d9;font-size:13px;outline:none;font-family:inherit">
           <option value="ds">DeepSeek 官方</option>
           <option value="sf">硅基流动 SiliconFlow</option>
           <option value="or">OpenRouter</option>
@@ -559,7 +569,8 @@
       </div>
       <div class="field">
         <label>创世界·模型</label>
-        <input type="text" id="cfg-wc-model" placeholder="deepseek-chat">
+        <input list="cfg-wc-model-list" id="cfg-wc-model" placeholder="deepseek-chat" style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 12px;color:#c9d1d9;font-size:13px;outline:none;font-family:inherit">
+        <datalist id="cfg-wc-model-list"></datalist>
       </div>
     </div>
     <div class="modal-actions">
@@ -693,6 +704,22 @@ function setMode(mode) {
   localStorage.setItem('ai_mode', mode);
 }
 
+// ---------- 核心 GM 行为规则 ----------
+
+function coreMemoryRules() {
+  return `按照玩家（我）指定首次创造世界类型默认剧本进行，若无指定或含糊表达，请自我完善丰富其世界类型；当我说"看看世界动态"类似表达词语时，你直接告诉我现在实时世界发生了什么。
+
+我（玩家）可以选择旁观这个世界自然发展，也可以选择出手干预。每次选择都会产生对应的因果，你负责按着因果自行推演剧情。
+
+世界里的NPC各有各的生活，并自身带有性格、行为等。他们会各自互动——熟人会主动跟玩家、各NPC打招呼、聊天、邀同行；陌生人路过也可能因为好奇、有事相求、或者单纯觉得玩家身上有什么引人注意的东西而搭话，请自我完善具体事件。他们之间也会互相来往。如果玩家做了什么影响到了NPC，那就按着因果往下推剧情，请自我完善。玩家对NPC提出的要求或建议，NPC会根据自身性格、立场和当下处境判断是否接受，不会因为玩家说了就照做。
+
+玩家及所有NPC等都会出现、陷入负面状态——如劳累、疲惫、没精神、需要休息等，其他负面元素请自我完善。请GM根据玩家创建世界类型的逻辑（若世界表达模糊，请按同类型世界参考，自我完善）和人类世界的基本逻辑自行判断触发时机和程度。这些状态属于因果的一部分，触发后就按剧情推进。
+
+如果需要为这个世界填充功能性角色（对手、店主、同伴等），且该世界本身有对应的原作角色，就使用原作角色，不要从其他世代/版本借用同名角色或地点；【GM设定摘要】里列出的 NPC 是这个世界目前已知的全部重要角色，不要给他们凭空添加新的设定（比如新的职业身份），也不要用另一个角色套在他们身上；NPC不会因为玩家只是在场旁观、什么都没做，就主动提出给玩家奖励或机会——除非玩家的行动构成了让这件事发生的理由。
+
+**关键事件节点不可编造**——这条规则只适用于世界已经确立的背景设定和已经发生的事。不适用于玩家正在用行动实时争夺、尚未有结果的对抗。当玩家主动挑战一个即将发生的"原版事件"时，胜负应当由双方当下的实际条件真实判定，不能因为"原版是这样发生的"就预设结果。如果你对某个具体事实细节记不准，宁可保守处理，不要为了丰富细节而猜测。每轮推进时优先发展剧情进展，而非重新描写读者已知的场景。`;
+}
+
 // ---------- 系统 Prompt（三层架构） ----------
 
 function systemPrompt(memory) {
@@ -719,19 +746,7 @@ function systemPrompt(memory) {
 主要角色：${npcNames}——他们有自己的意志和行动逻辑。`;
 	  }
 
-	  prompt += `
-
-按照玩家（我）指定首次创造世界类型默认剧本进行，若无指定或含糊表达，请自我完善丰富其世界类型；当我说"看看世界动态"类似表达词语时，你直接告诉我现在实时世界发生了什么。
-
-我（玩家）可以选择旁观这个世界自然发展，也可以选择出手干预。每次选择都会产生对应的因果，你负责按着因果自行推演剧情。
-
-世界里的NPC各有各的生活，并自身带有性格、行为等。他们会各自互动——熟人会主动跟玩家、各NPC打招呼、聊天、邀同行；陌生人路过也可能因为好奇、有事相求、或者单纯觉得玩家身上有什么引人注意的东西而搭话，请自我完善具体事件。他们之间也会互相来往。如果玩家做了什么影响到了NPC，那就按着因果往下推剧情，请自我完善。玩家对NPC提出的要求或建议，NPC会根据自身性格、立场和当下处境判断是否接受，不会因为玩家说了就照做。
-
-玩家及所有NPC等都会出现、陷入负面状态——如劳累、疲惫、没精神、需要休息等，其他负面元素请自我完善。请GM根据玩家创建世界类型的逻辑（若世界表达模糊，请按同类型世界参考，自我完善）和人类世界的基本逻辑自行判断触发时机和程度。这些状态属于因果的一部分，触发后就按剧情推进。
-
-如果需要为这个世界填充功能性角色（对手、店主、同伴等），且该世界本身有对应的原作角色，就使用原作角色，不要从其他世代/版本借用同名角色或地点；【GM设定摘要】里列出的 NPC 是这个世界目前已知的全部重要角色，不要给他们凭空添加新的设定（比如新的职业身份），也不要用另一个角色套在他们身上；NPC不会因为玩家只是在场旁观、什么都没做，就主动提出给玩家奖励或机会——除非玩家的行动构成了让这件事发生的理由。
-
-**关键事件节点不可编造**——这条规则只适用于世界已经确立的背景设定和已经发生的事。不适用于玩家正在用行动实时争夺、尚未有结果的对抗。当玩家主动挑战一个即将发生的"原版事件"时，胜负应当由双方当下的实际条件真实判定，不能因为"原版是这样发生的"就预设结果。如果你对某个具体事实细节记不准，宁可保守处理，不要为了丰富细节而猜测。每轮推进时优先发展剧情进展，而非重新描写读者已知的场景。`;
+	  prompt += '\n\n' + coreMemoryRules();
 
   // 模式规则
   prompt += '\n\n' + (getMode() === 'real' ? realModeRules() : freeModeRules());
@@ -1076,6 +1091,40 @@ function doLoad(idx) {
   location.reload();
 }
 
+// ---------- 导入导出 ----------
+
+function exportMemory() {
+  const memory = loadMemory();
+  if (!memory || Object.keys(memory).length === 0) { alert('没有记忆可导出'); return; }
+  const blob = new Blob([JSON.stringify({ memory, recentHistory: loadRecentHistory() }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `sandbox-memory-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importMemory(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.memory && typeof data.memory === 'object') {
+        saveMemory(data.memory);
+        if (data.recentHistory) localStorage.setItem(HISTORY_KEY, JSON.stringify(data.recentHistory));
+        document.getElementById('chat-log').innerHTML = '';
+        document.getElementById('turn-count').textContent = '0';
+        location.reload();
+      } else {
+        alert('无效的记忆文件：缺少 memory 字段');
+      }
+    } catch (err) {
+      alert('文件解析失败：' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
 // ---------- 弹窗通用 ----------
 
 function openModal(id) {
@@ -1131,24 +1180,74 @@ function removeLastMessage() {
   if (log.lastChild) log.removeChild(log.lastChild);
 }
 
+// ---------- 供应商模型映射 ----------
+
+const PROVIDER_ENDPOINTS = {
+  ds: 'https://api.deepseek.com/v1/chat/completions',
+  sf: 'https://api.siliconflow.cn/v1/chat/completions',
+  or: 'https://openrouter.ai/api/v1/chat/completions',
+  zhipu: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+  gemini: 'https://generativelanguage.googleapis.com',
+  custom: ''
+};
+
+const PROVIDER_DEFAULT_MODEL = {
+  ds: 'deepseek-chat',
+  sf: 'deepseek-ai/DeepSeek-V4-Flash',
+  or: 'openrouter/free',
+  zhipu: 'glm-4-flash',
+  gemini: 'gemini-2.0-flash',
+  custom: ''
+};
+
+const MODEL_OPTIONS = {
+  ds: ['deepseek-chat', 'deepseek-reasoner'],
+  sf: [
+    'deepseek-ai/DeepSeek-V4-Flash',
+    'Qwen/Qwen3.6-35B-A3B',
+    'deepseek-ai/DeepSeek-V3.2',
+    'deepseek-ai/DeepSeek-R1',
+    'Qwen/Qwen2.5-72B-Instruct-GPT4-Compress'
+  ],
+  or: [
+    'openrouter/free',
+    'google/gemini-2.5-pro-exp-03-25:free',
+    'microsoft/phi-4',
+    'cohere/command-r-plus-08-2024'
+  ],
+  zhipu: ['glm-4-flash', 'glm-4-plus', 'glm-4-air'],
+  gemini: ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.0-pro'],
+  custom: []
+};
+
+/** 供应商切换时更新 endpoint + 模型下拉选项 */
+function onProviderChange(select, prefix) {
+  const prov = select.value;
+  const ep = document.getElementById(prefix + 'endpoint');
+  const md = document.getElementById(prefix + 'model');
+  const list = document.getElementById(prefix + 'model-list');
+
+  ep.value = PROVIDER_ENDPOINTS[prov] || '';
+
+  // 刷新 datalist 选项
+  const models = MODEL_OPTIONS[prov] || [];
+  list.innerHTML = models.map(m => `<option value="${m.replace(/"/g,'&quot;')}">`).join('');
+
+  // 设置默认模型
+  md.value = PROVIDER_DEFAULT_MODEL[prov] || '';
+}
+
 // ---------- 设置面板 ----------
 
 function loadSettingsToForm() {
-  const provDefaults = {
-    ds: { ep: 'https://api.deepseek.com/v1/chat/completions', md: 'deepseek-chat' },
-    sf: { ep: 'https://api.siliconflow.cn/v1/chat/completions', md: 'Qwen/Qwen3.6-35B-A3B' },
-    or: { ep: 'https://openrouter.ai/api/v1/chat/completions', md: 'google/gemma-4-26b-a4b-it:free' },
-    zhipu: { ep: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', md: 'glm-4-flash' },
-    gemini: { ep: 'https://generativelanguage.googleapis.com', md: 'gemini-2.0-flash' },
-    custom: { ep: '', md: '' }
-  };
   const cfg = JSON.parse(localStorage.getItem('ai_config') || '{}');
   const provider = cfg.provider || 'ds';
-  const def = provDefaults[provider] || provDefaults.custom;
+
   document.getElementById('cfg-provider').value = provider;
-  document.getElementById('cfg-endpoint').value = cfg.endpoint || def.ep;
+  onProviderChange(document.getElementById('cfg-provider'), 'cfg-');
+  document.getElementById('cfg-endpoint').value = cfg.endpoint || PROVIDER_ENDPOINTS[provider] || '';
   document.getElementById('cfg-key').value = cfg.apiKey || '';
-  document.getElementById('cfg-model').value = cfg.model || def.md;
+  document.getElementById('cfg-model').value = cfg.model || PROVIDER_DEFAULT_MODEL[provider] || '';
 
   // 创世界专用配置
   const wc = cfg.wc || {};
@@ -1156,12 +1255,12 @@ function loadSettingsToForm() {
   document.getElementById('cfg-wc-fields').style.display = wc.enabled ? 'block' : 'none';
   if (wc.provider) {
     document.getElementById('cfg-wc-provider').value = wc.provider;
-    const wcDef = provDefaults[wc.provider] || provDefaults.custom;
-    document.getElementById('cfg-wc-endpoint').value = wc.endpoint || wcDef.ep;
-    document.getElementById('cfg-wc-model').value = wc.model || wcDef.md;
+    onProviderChange(document.getElementById('cfg-wc-provider'), 'cfg-wc-');
+    document.getElementById('cfg-wc-endpoint').value = wc.endpoint || PROVIDER_ENDPOINTS[wc.provider] || '';
+    document.getElementById('cfg-wc-model').value = wc.model || PROVIDER_DEFAULT_MODEL[wc.provider] || '';
   } else {
-    document.getElementById('cfg-wc-endpoint').value = wc.endpoint || '';
-    document.getElementById('cfg-wc-model').value = wc.model || '';
+    document.getElementById('cfg-wc-endpoint').value = '';
+    document.getElementById('cfg-wc-model').value = '';
   }
   document.getElementById('cfg-wc-key').value = wc.apiKey || '';
 }
@@ -1259,6 +1358,15 @@ function updateApiStatus() {
 
 // ---------- 本轮变化 Diff ----------
 
+/** 排序 key 后 stringify，避免对象字段顺序不同导致的误报 */
+function sortedStringify(val) {
+  if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+    const sorted = Object.keys(val).sort().reduce((acc, k) => { acc[k] = val[k]; return acc; }, {});
+    return JSON.stringify(sorted);
+  }
+  return JSON.stringify(val);
+}
+
 let _prevMemory = null; // AI 调用前的记忆快照
 let _memoryStack = [];   // STATE 历史栈（用于撤回）
 
@@ -1277,7 +1385,7 @@ function computeDiff(oldMem, newMem) {
       changes.push({ type: 'removed', key, oldVal });
     } else if (oldVal === undefined) {
       changes.push({ type: 'added', key, newVal });
-    } else if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+    } else if (sortedStringify(oldVal) !== sortedStringify(newVal)) {
       changes.push({ type: 'changed', key, oldVal, newVal });
     }
   }
@@ -1660,6 +1768,14 @@ function init() {
   document.getElementById('btn-save-close').addEventListener('click', () => closeModal('save-modal'));
   document.getElementById('save-modal').addEventListener('click', (e) => {
     if (e.target === e.currentTarget) closeModal('save-modal');
+  });
+
+  // 导入导出
+  document.getElementById('export-btn').addEventListener('click', exportMemory);
+  document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file').click());
+  document.getElementById('import-file').addEventListener('change', function(e) {
+    if (e.target.files.length > 0) importMemory(e.target.files[0]);
+    e.target.value = '';
   });
 
   // 清除记忆
