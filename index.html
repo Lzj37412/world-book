@@ -536,8 +536,8 @@
     </div>
     <div class="field">
       <label>模型</label>
-      <input list="cfg-model-list" id="cfg-model" placeholder="deepseek-chat" style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 12px;color:#c9d1d9;font-size:13px;outline:none;font-family:inherit">
-      <datalist id="cfg-model-list"></datalist>
+      <select id="cfg-model" style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 12px;color:#c9d1d9;font-size:13px;outline:none;font-family:inherit;cursor:pointer"></select>
+      <input type="text" id="cfg-model-custom" placeholder="输入模型名" style="display:none;width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 12px;color:#c9d1d9;font-size:13px;outline:none;font-family:inherit">
     </div>
 
     <!-- 🌍 创建世界专用模型 -->
@@ -569,8 +569,8 @@
       </div>
       <div class="field">
         <label>创世界·模型</label>
-        <input list="cfg-wc-model-list" id="cfg-wc-model" placeholder="deepseek-chat" style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 12px;color:#c9d1d9;font-size:13px;outline:none;font-family:inherit">
-        <datalist id="cfg-wc-model-list"></datalist>
+        <select id="cfg-wc-model" style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 12px;color:#c9d1d9;font-size:13px;outline:none;font-family:inherit;cursor:pointer"></select>
+        <input type="text" id="cfg-wc-model-custom" placeholder="输入模型名" style="display:none;width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 12px;color:#c9d1d9;font-size:13px;outline:none;font-family:inherit">
       </div>
     </div>
     <div class="modal-actions">
@@ -1228,20 +1228,36 @@ const MODEL_OPTIONS = {
 function onProviderChange(select, prefix) {
   const prov = select.value;
   const ep = document.getElementById(prefix + 'endpoint');
-  const md = document.getElementById(prefix + 'model');
-  const list = document.getElementById(prefix + 'model-list');
+  const mdSelect = document.getElementById(prefix + 'model');
+  const mdInput = document.getElementById(prefix + 'model-custom');
 
   ep.value = PROVIDER_ENDPOINTS[prov] || '';
 
-  // 刷新 datalist 选项
-  const models = MODEL_OPTIONS[prov] || [];
-  list.innerHTML = models.map(m => `<option value="${m.replace(/"/g,'&quot;')}">`).join('');
-
-  // 设置默认模型
-  md.value = PROVIDER_DEFAULT_MODEL[prov] || '';
+  if (prov === 'custom') {
+    // 自定义→显示文本框，隐藏下拉
+    mdSelect.style.display = 'none';
+    mdInput.style.display = 'block';
+    mdInput.value = '';
+  } else {
+    mdSelect.style.display = 'block';
+    mdInput.style.display = 'none';
+    // 刷新下拉选项
+    const models = MODEL_OPTIONS[prov] || [];
+    mdSelect.innerHTML = models.map(m => `<option value="${m.replace(/"/g,'&quot;')}">${m}</option>`).join('');
+    mdSelect.value = PROVIDER_DEFAULT_MODEL[prov] || models[0] || '';
+  }
 }
 
 // ---------- 设置面板 ----------
+
+function setModelValue(prefix, model) {
+  const prov = document.getElementById(prefix + 'provider').value;
+  if (prov === 'custom') {
+    document.getElementById(prefix + 'model-custom').value = model || '';
+  } else {
+    document.getElementById(prefix + 'model').value = model || PROVIDER_DEFAULT_MODEL[prov] || '';
+  }
+}
 
 function loadSettingsToForm() {
   const cfg = JSON.parse(localStorage.getItem('ai_config') || '{}');
@@ -1251,7 +1267,7 @@ function loadSettingsToForm() {
   onProviderChange(document.getElementById('cfg-provider'), 'cfg-');
   document.getElementById('cfg-endpoint').value = cfg.endpoint || PROVIDER_ENDPOINTS[provider] || '';
   document.getElementById('cfg-key').value = cfg.apiKey || '';
-  document.getElementById('cfg-model').value = cfg.model || PROVIDER_DEFAULT_MODEL[provider] || '';
+  setModelValue('cfg-', cfg.model);
 
   // 创世界专用配置
   const wc = cfg.wc || {};
@@ -1261,12 +1277,19 @@ function loadSettingsToForm() {
     document.getElementById('cfg-wc-provider').value = wc.provider;
     onProviderChange(document.getElementById('cfg-wc-provider'), 'cfg-wc-');
     document.getElementById('cfg-wc-endpoint').value = wc.endpoint || PROVIDER_ENDPOINTS[wc.provider] || '';
-    document.getElementById('cfg-wc-model').value = wc.model || PROVIDER_DEFAULT_MODEL[wc.provider] || '';
+    setModelValue('cfg-wc-', wc.model);
   } else {
     document.getElementById('cfg-wc-endpoint').value = '';
-    document.getElementById('cfg-wc-model').value = '';
   }
   document.getElementById('cfg-wc-key').value = wc.apiKey || '';
+}
+
+function getModelValue(prefix) {
+  const prov = document.getElementById(prefix + 'provider').value;
+  if (prov === 'custom') {
+    return document.getElementById(prefix + 'model-custom').value.trim();
+  }
+  return document.getElementById(prefix + 'model').value.trim();
 }
 
 function saveSettingsFromForm() {
@@ -1274,7 +1297,7 @@ function saveSettingsFromForm() {
     provider: document.getElementById('cfg-provider').value,
     endpoint: document.getElementById('cfg-endpoint').value.trim(),
     apiKey: document.getElementById('cfg-key').value.trim(),
-    model: document.getElementById('cfg-model').value.trim()
+    model: getModelValue('cfg-')
   };
 
   // 创世界专用配置
@@ -1285,7 +1308,7 @@ function saveSettingsFromForm() {
       provider: document.getElementById('cfg-wc-provider').value,
       endpoint: document.getElementById('cfg-wc-endpoint').value.trim(),
       apiKey: document.getElementById('cfg-wc-key').value.trim(),
-      model: document.getElementById('cfg-wc-model').value.trim()
+      model: getModelValue('cfg-wc-')
     };
   } else {
     delete config.wc;
@@ -1304,7 +1327,7 @@ async function testConnection() {
   const provider = document.getElementById('cfg-provider').value;
   const endpoint = document.getElementById('cfg-endpoint').value.trim();
   const apiKey = document.getElementById('cfg-key').value.trim();
-  const model = document.getElementById('cfg-model').value.trim();
+  const model = getModelValue('cfg-');
 
   if (!apiKey) { btn.textContent = '❌ 未填 Key'; btn.disabled = false; return; }
 
