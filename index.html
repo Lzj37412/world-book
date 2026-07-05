@@ -905,7 +905,23 @@ function parseAIOutput(text) {
   // ① 优先找 <<STATE>>...<<ENDSTATE>> 协议标记（最可靠）
   const markerMatch = text.match(/<<STATE>>\s*\n?([\s\S]*?)<<ENDSTATE>>/);
   if (markerMatch) {
-    state = tryParse(markerMatch[1].trim());
+    const raw = markerMatch[1].trim();
+    state = tryParse(raw);
+    // 如果 JSON 解析失败，尝试按 key:value 行解析（AI 有时输出纯文本键值对）
+    if (!state) {
+      const kvLines = raw.split('\n');
+      const kv = {};
+      let hasKV = false;
+      for (const line of kvLines) {
+        const colonIdx = line.indexOf(':');
+        if (colonIdx > 0) {
+          const k = line.substring(0, colonIdx).trim();
+          const v = line.substring(colonIdx + 1).trim();
+          if (k && v) { kv[k] = v; hasKV = true; }
+        }
+      }
+      if (hasKV) state = kv;
+    }
     narrative = text.replace(markerMatch[0], '').trim();
     // 无论解析成功与否，标记内容已从 narrative 摘除 → 不会露 Bare JSON
     return { narrative, state };
@@ -1397,8 +1413,14 @@ function updateApiStatus() {
 
 /** 排序 key 后 stringify，避免对象字段顺序不同导致的误报 */
 function sortedStringify(val) {
-  if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
-    const sorted = Object.keys(val).sort().reduce((acc, k) => { acc[k] = val[k]; return acc; }, {});
+  if (typeof val === 'object' && val !== null) {
+    if (Array.isArray(val)) {
+      return '[' + val.map(v => sortedStringify(v)).join(',') + ']';
+    }
+    const sorted = Object.keys(val).sort().reduce((acc, k) => {
+      acc[k] = JSON.parse(sortedStringify(val[k]));
+      return acc;
+    }, {});
     return JSON.stringify(sorted);
   }
   return JSON.stringify(val);
