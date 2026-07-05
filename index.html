@@ -1006,27 +1006,32 @@ async function createWorld() {
       if (form.scene) descParts.push(form.scene);
       state.世界设定原文 = descParts.join('。') + '。';
       updateMemory({}, state);
+
+      // 有 STATE → 正常切主界面
+      captureSnapshot(loadMemory());
+      document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('app').style.display = 'flex';
+
+      const worldName = state.world || '这个';
+      appendMessage('narrator', `🤖 ${narrative || `欢迎来到${worldName}世界。你睁开眼睛，周围的一切陌生而真实。`}`);
+      renderMemoryView(loadMemory());
+      updateTurnCount();
+      updateApiStatus();
+    } else {
+      // STATE 解析失败 → 叙事给了但世界没记住，提示玩家重试
+      btn.textContent = '⚠️ 世界已开始但设定未记住';
+      setTimeout(() => {
+        btn.textContent = '✨ 重新尝试';
+        btn.disabled = false;
+      }, 3000);
     }
-
-    // 初始化快照（让第一轮就有 diff 基准）
-    captureSnapshot(loadMemory());
-
-    // 切到主界面
-    document.getElementById('start-screen').classList.add('hidden');
-    document.getElementById('app').style.display = 'flex';
-
-    // 显示叙事（如果 AI 没输出叙事，用解析出的 state 信息补一句）
-    const worldName = (state && state.world) || '这个';
-    appendMessage('narrator', `🤖 ${narrative || `欢迎来到${worldName}世界。你睁开眼睛，周围的一切陌生而真实。`}`);
-    renderMemoryView(loadMemory());
-    updateTurnCount();
-    updateApiStatus();
 
   } catch (err) {
     btn.textContent = `❌ ${err.message.slice(0, 30)}`;
-    setTimeout(() => { btn.textContent = '✨ 重新尝试'; }, 2000);
-  } finally {
-    btn.disabled = false;
+    setTimeout(() => {
+      btn.textContent = '✨ 重新尝试';
+      btn.disabled = false;
+    }, 3000);
   }
 }
 
