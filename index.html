@@ -699,7 +699,8 @@ function stateOutputProtocol() {
 - 字段名称、层级、内容不做限制。AI自己决定记什么。
 - 之前明确设定过的实体（角色、物品、关系、事件等），除非已失效或被替代，否则每轮继续携带。
 - STATE 必须是完整的。宁可多写，不要漏写。
-- 如果某些历史已经彻底与当前剧情无关（已结束的事件、已离场且不会回归的角色等），可以精简不带，拿不准就留着。`;
+- 如果某些历史已经彻底与当前剧情无关（已结束的事件、已离场且不会回归的角色等），可以精简不带，拿不准就留着。
+	- 关于精简的判断标准：字段数量本身不是目标，叙事相关性才是。每轮自问——这个字段在未来 3-5 轮里是否还会影响剧情走向？如果不会，就可以放心精简。宁可因为拿不准而多留一轮，也不要贸然丢弃可能还有用的信息。`;
 }
 
 // ---------- 获取当前模式 ----------
@@ -984,6 +985,7 @@ function buildWorldPrompt(form) {
 	}
 async function createWorld() {
   clearRecentHistory(); // 新世界清空旧对话历史
+  clearStack();         // 新世界清空撤回栈
   const btn = document.getElementById('btn-create-world');
   btn.disabled = true;
   btn.textContent = '⏳ 世界生成中...';
@@ -1173,9 +1175,17 @@ function updateMemory(oldMemory, newState) {
   if (!newState || typeof newState !== 'object' || Object.keys(newState).length === 0) {
     return false; // 没有有效状态，不更新
   }
+  // 保护系统字段：世界设定原文是玩家表单生成的静态锚点，不是 AI 的输出字段
+  // AI 不会在 STATE 中回传它，所以全量替换前先保留，替换后合并回去
+  const preservedDesc = oldMemory.世界设定原文 || null;
+
   // 全量替换：STATE 是完整快照，不在 STATE 中的旧字段自然废弃
   Object.keys(oldMemory).forEach(k => delete oldMemory[k]);
   Object.assign(oldMemory, newState);
+
+  // 系统字段不受 AI 输出影响，合并回去
+  if (preservedDesc) oldMemory.世界设定原文 = preservedDesc;
+
   saveMemory(oldMemory);
   return true;
 }
@@ -1429,6 +1439,22 @@ function sortedStringify(val) {
 let _prevMemory = null; // AI 调用前的记忆快照
 let _memoryStack = [];   // STATE 历史栈（用于撤回）
 
+const STACK_KEY = 'ai_sandbox_stack';
+
+function saveStack() {
+  try { localStorage.setItem(STACK_KEY, JSON.stringify(_memoryStack)); } catch (e) { /* ignore */ }
+}
+function loadStack() {
+  try {
+    const raw = localStorage.getItem(STACK_KEY);
+    if (raw) _memoryStack = JSON.parse(raw);
+  } catch (e) { _memoryStack = []; }
+}
+function clearStack() {
+  _memoryStack = [];
+  localStorage.removeItem(STACK_KEY);
+}
+
 function captureSnapshot(memory) {
   _prevMemory = JSON.parse(JSON.stringify(memory));
 }
@@ -1657,7 +1683,8 @@ function updateTurnCount() {
 // ---------- 撤回 ----------
 
 function retractTurn() {
-  const lastMsg = document.querySelector('#chat-log .msg.user:last-of-type');
+  const userMsgs = document.querySelectorAll('#chat-log .msg.user');
+  const lastMsg = userMsgs[userMsgs.length - 1];
   if (!lastMsg) return;
 
   // 删除最后一条用户消息及其之后的所有消息
@@ -1703,6 +1730,7 @@ async function submitAction() {
   const recentHistory = loadRecentHistory();
   captureSnapshot(memory);
   _memoryStack.push(JSON.parse(JSON.stringify(memory)));
+  saveStack(); // 持久化撤回栈，刷新页面后仍可用
 
   // 3. AI 生成
   let result;
@@ -1742,6 +1770,9 @@ async function submitAction() {
 // ---------- 初始化 ----------
 
 function init() {
+  // 恢复撤回栈（刷新页面后用撤回不会 STATE 不回滚）
+  loadStack();
+
   // 读取读档时保存的回合数和聊天记录
   const loadTurn = localStorage.getItem('load_turn');
   if (loadTurn) {
@@ -1842,6 +1873,7 @@ function init() {
     if (confirm('清除所有记忆？这将重新开始。')) {
       clearMemory();
       clearRecentHistory();
+      clearStack();
       document.getElementById('chat-log').innerHTML = '';
       document.getElementById('turn-count').textContent = '0';
       init();
