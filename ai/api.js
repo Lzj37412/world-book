@@ -56,7 +56,7 @@ async function callOpenAI(systemPrompt, userPrompt, config) {
   if (config.provider === 'sf') body.enable_thinking = false;
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60000);
+  const timeout = setTimeout(() => controller.abort(), 120000);
 
   // endpoint 已经是完整 URL（含 /v1/chat/completions）
   const res = await fetch(endpoint, {
