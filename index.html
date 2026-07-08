@@ -405,8 +405,9 @@
   .mode-toggle button.active {
     background: #161b22; color: #c9d1d9;
   }
-  .mode-toggle button:first-child.active { background: #238636; color: #fff; }
-  .mode-toggle button:last-child.active { background: #da3633; color: #fff; }
+  #mode-free.active { background: #238636; color: #fff; }
+  #mode-real.active { background: #da3633; color: #fff; }
+  #mode-fate.active { background: #8957e5; color: #fff; }
   .mode-hint {
     text-align: center; font-size: 10px; color: #484f58; margin-bottom: 8px;
   }
@@ -460,8 +461,9 @@
     <div class="mode-toggle">
       <button id="mode-free" class="active">🎮 自由模式</button>
       <button id="mode-real">👁️ 上帝模式</button>
+      <button id="mode-fate">🧿 命运跟随</button>
     </div>
-    <div class="mode-hint" id="mode-hint">NPC 愿意配合，但会保留自己的底线和判断</div>
+    <div class="mode-hint" id="mode-hint">世界里可以有好人坏人，善恶都要有来处</div>
 
     <button class="start-btn" id="btn-create-world">✨ 创造世界</button>
     <button class="start-btn" id="btn-start-settings" onclick="openSettings()" style="background:#21262d;color:#8b949e;margin-top:6px;border:1px solid #30363d;">⚙️ API 设置</button>
@@ -771,17 +773,46 @@ function freeModeRules() {
   return `【自由模式｜Free Mode】
 你把世界这半边写好就行。玩家自己的对话、行动、决定由玩家自己控制。
 
+自由模式是沉浸式小说风格，不是所有 NPC 都友善。世界里可以有好人、坏人、势利眼、反派和打脸对象。区别在于：NPC 的善意或恶意都要有性格、立场、利益和处境来源，不要无理由跪舔玩家，也不要无理由针对玩家。
+
 【默认叙事范围——只写以下内容】
 - ✅ NPC 的反应、行为、对话
 - ✅ 环境的变化、事件的因果推演
 - ✅ 世界自主运转的动态（暗流、新事件等）
 - ❌ 不写玩家角色的对话、行动和决定
-- ❌ 不给玩家指方向、定目标、做选择
+- ❌ 不给玩家指方向、定目标、替玩家选择路线
+
+如果玩家只说“继续”“看看”“然后呢”这类含糊输入，只推进世界和 NPC 的自然反应。玩家角色可以沉默、旁观、等待，除非玩家明确说自己要做什么。
+
+玩家尝试行动时，你描述 NPC 和世界的反应。高风险、高收益、会改变长期格局的结果，要按当时条件一步步推进，不要一轮就轻易完成。
+
+每轮优先写新的反应、新的信息、新的变化。不要反复复述已经建立过的背景和场景，环境描写只服务于当前变化或 NPC 反应。
 
 【协助模式——范围临时扩大】
-如果玩家明确说"帮我……"、"替我说……"、"你觉得我该怎么说"等请求，
-你才可以帮玩家完善表达和行动建议——包括代拟对话、提供选项、补充描述。
+只有玩家明确说“帮我……”“替我说……”“给我几个说法/选项”等请求时，才可以帮玩家润色表达、代拟台词或列出可能行动。
+协助内容只能作为建议或选项，不能写成玩家已经执行，不能替玩家选定最终决定。
 除此之外，一律只写世界反应，不碰玩家那半边。`;
+}
+
+function fateModeRules() {
+  return `【命运跟随｜Fate Follow】
+观察者选择一个目标 NPC，镜头绑定在他的命运线上。所谓附身，不是控制身体，而是把视角贴在他的命运上，看他的选择和这些选择带来的因果。
+
+观察者不是这个 NPC 本人，也不能操控这个 NPC。AI 仍然根据目标 NPC 的性格、经历、欲望、恐惧、信息差、能力和处境，独立推演他的选择。
+
+默认使用第三人称贴身叙事：重点写目标 NPC 看见什么、误解什么、在意什么、害怕什么、想争取什么，以及他因此做出的选择。不要用“你决定”“你选择”来替他说话或替他做决定。
+
+镜头可以适当拉远。当有阴谋、机缘、敌意、贵人、灾祸正在影响目标 NPC 的命运时，可以写出目标 NPC 暂时不知道的外部变化，方便观察者判断要不要干预。
+
+观察者可以干预外部条件：投放福利、制造阻碍、安排相遇、改变环境、加入新 NPC、新势力、新系统、新事件。观察者投放的是原因，不是结果。
+
+观察者不能直接改变目标 NPC 的意志：不能指定他爱谁、恨谁、相信谁、背叛谁、选择哪条路。结果由 AI 按真实因果推演。
+
+目标 NPC 没有主角光环。他可能成功，也可能失败、受伤、误判、堕落、死亡，或者因为自己的选择走向完全不同的人生。
+
+命运跟随不需要把一生写成流水账。默认按关键阶段推进：转折、选择、代价、关系变化、命运节点。观察者想细看某一天、某个人、某场阴谋时，再展开细节。
+
+如果观察者看腻了，可以切换跟随目标。新目标必须作为独立 NPC 继续推演，不继承上一个目标的主角光环。`;
 }
 
 function stateOutputProtocol() {
@@ -835,9 +866,10 @@ function systemPrompt(memory) {
   const m = memory || {};
   const mode = getMode();
   const isReal = mode === 'real';
+  const isFate = mode === 'fate';
   const world = m.world || m.世界观 || m.世界 || '这个世界';
 
-  if (isReal) {
+  if (isReal || isFate) {
     const location = m.位置 || m.location || m.地点 || '';
     const npcs = m.NPC || m.npcs || m.主要NPC || m.NPC列表 || m.角色 || null;
 
@@ -858,7 +890,7 @@ ${world}。`;
     }
 
     prompt += '\n\n' + coreMemoryRules();
-    prompt += '\n\n' + realModeRules();
+    prompt += '\n\n' + (isFate ? fateModeRules() : realModeRules());
     prompt += '\n\n' + stateOutputProtocol();
     return prompt;
   }
@@ -960,6 +992,7 @@ function buildPrompt(input, memory, recentHistory) {
   const worldDesc = memory && memory.世界设定原文 ? memory.世界设定原文 : '';
   const suppressKeys = ['世界设定原文'];
   const isReal = mode === 'real';
+  const isFate = mode === 'fate';
 
   const dataLines = Object.entries(memory || {})
     .filter(([k]) => !suppressKeys.includes(k))
@@ -972,7 +1005,7 @@ function buildPrompt(input, memory, recentHistory) {
     });
   const dataText = dataLines.length > 0 ? dataLines.join('\n') : '';
 
-  const historyPrefix = isReal ? '观察者' : '玩家';
+  const historyPrefix = (isReal || isFate) ? '观察者' : '玩家';
   const historyText = (recentHistory && recentHistory.length > 0)
     ? recentHistory.map(h => `${historyPrefix}：${h.input}\nGM：${h.narrative}`).join('\n\n')
     : '（无）';
@@ -987,10 +1020,12 @@ function buildPrompt(input, memory, recentHistory) {
     worldSection = '（无）';
   }
 
-  const actionLabel = isReal ? '【观察者指令】' : '【玩家行动】';
+  const actionLabel = (isReal || isFate) ? '【观察者指令】' : '【玩家行动】';
   const footer = isReal
     ? '根据当前世界状态推进。简报式输出，聚焦因果链：谁做了什么→结果是什么→目前局势如何。不渲染环境氛围，不描写感官细节。\n\t【格式】每个NPC/势力/地点段首必须加表情符号，每轮每处都需要。'
-    : '根据当前状态和玩家行动推进剧情。基于已有事实延续发展，不重复描写已经建立的环境细节。';
+    : isFate
+      ? '根据当前世界状态推进目标 NPC 的命运线。默认第三人称贴身叙事，可以适当拉远呈现他不知道的阴谋、机缘和外部变化。观察者的干预只能作为外部原因，不能直接改变 NPC 意志。'
+      : '根据当前状态和玩家行动推进剧情。基于已有事实延续发展，不重复描写已经建立的环境细节。';
 
   return `【最近对话】\n${historyText}\n\n${worldSection}\n\n${actionLabel}\n${input}\n\n${footer}\n\n---\n请在叙事结束后输出 STATE 快照（<<STATE>>...<<ENDSTATE>>）\n字段名与上一轮保持一致，不要临时改用新的命名方式描述同一件事。 ---`;
 }
@@ -1063,21 +1098,26 @@ function parseAIOutput(text) {
 
 function buildWorldPrompt(form) {
       const mode = getMode();
-      if (mode === 'real') {
+      if (mode === 'real' || mode === 'fate') {
         let prompt = '';
         const parts = [];
         if (form.world) parts.push(`这个世界是一个${form.world}的世界`);
-        if (form.npcs) parts.push(`初始角色有：${form.npcs}`);
-        if (form.goals) parts.push(`世界的大致方向是${form.goals}`);
+        if (form.npcs) parts.push(mode === 'fate' ? `可跟随的初始 NPC 有：${form.npcs}` : `初始角色有：${form.npcs}`);
+        if (form.goals) parts.push(mode === 'fate' ? `命运观察的大致方向是${form.goals}` : `世界的大致方向是${form.goals}`);
 
-        prompt += `以下是由观察者创建的世界设定。你作为世界模拟器，在这个设定基础上独立推演：
+        const roleText = mode === 'fate'
+          ? '你作为命运跟随 GM，在这个设定里选择或创建一个有故事张力的目标 NPC，贴着他的命运线开场。'
+          : '你作为世界模拟器，在这个设定基础上独立推演。';
+        prompt += `以下是由观察者创建的世界设定。${roleText}
 
 "`;
         prompt += parts.join('。');
         if (form.scene) prompt += `。${form.scene}`;
         prompt += `"
 
-直接呈现一个活着的切片——描述这个世界此刻正在发生什么。
+${mode === 'fate'
+          ? '直接呈现目标 NPC 此刻的人生切片：他是谁、处在什么局面、正在面对什么选择或暗流。使用第三人称贴身叙事，可以适当拉远写出他暂时不知道的外部变化。'
+          : '直接呈现一个活着的切片——描述这个世界此刻正在发生什么。'}
 不需要"你"这个人称，观察者不在世界内。
 
 最后输出 STATE 快照：
@@ -1149,14 +1189,16 @@ async function createWorld() {
     // 保存初始状态（含表单固定字段 + 原文）
     if (state) {
       // 固定字段名：确保身份卡能准确读取，不受AI自由措辞影响
+      const mode = getMode();
       if (form.world && !state.world && !state.世界观) state.world = form.world;
-      if (getMode() !== 'real' && form.player && !state.玩家身份 && !state.玩家) state.玩家身份 = form.player;
+      if (mode === 'free' && form.player && !state.玩家身份 && !state.玩家) state.玩家身份 = form.player;
       if (form.npcs && !state.NPC && !state.主要NPC) state.NPC = form.npcs;
       const descParts = [];
       if (form.world) descParts.push(`这是一个${form.world}的世界`);
-      if (getMode() !== 'real' && form.player) descParts.push(`玩家穿越而来，身份是${form.player}`);
-      if (form.npcs) descParts.push(`玩家认识的人有${form.npcs}`);
-      if (form.goals) descParts.push(`玩家给出的故事方向大致是${form.goals}`);
+      if (mode === 'free' && form.player) descParts.push(`玩家穿越而来，身份是${form.player}`);
+      if (mode === 'fate' && form.npcs) descParts.push(`可跟随的初始 NPC 有${form.npcs}`);
+      else if (form.npcs) descParts.push(`玩家认识的人有${form.npcs}`);
+      if (form.goals) descParts.push(mode === 'fate' ? `命运观察的大致方向是${form.goals}` : `玩家给出的故事方向大致是${form.goals}`);
       if (form.scene) descParts.push(form.scene);
       state.世界设定原文 = descParts.join('。') + '。';
       updateMemory({}, state);
@@ -1899,7 +1941,8 @@ async function submitAction() {
   if (input === '撤回') { retractTurn(); return; }
 
   // 1. 显示用户输入（根据模式切换图标）
-  const userIcon = getMode() === 'real' ? '👁️' : '🧑';
+  const mode = getMode();
+  const userIcon = mode === 'real' ? '👁️' : mode === 'fate' ? '🧿' : '🧑';
   appendMessage('user', `${userIcon} ${input}`);
 
   // 2. 加载记忆 + 最近对话历史 + 快照
@@ -2010,37 +2053,51 @@ function init() {
 
   // 模式切换
   function updateModeUI() {
-    const isReal = getMode() === 'real';
-    // 上帝模式：隐藏"玩家"字段，改placeholder和hint
+    const mode = getMode();
+    const isReal = mode === 'real';
+    const isFate = mode === 'fate';
+    // 上帝/命运跟随：观察者不在世界内，隐藏"玩家"字段
     const playerField = document.getElementById('sw-player-field');
-    if (playerField) playerField.style.display = isReal ? 'none' : 'block';
+    if (playerField) playerField.style.display = (isReal || isFate) ? 'none' : 'block';
     const hint = document.getElementById('mode-hint');
     if (isReal) {
       hint.textContent = '👁️ 上帝模式 — 设定世界，观察因果';
+    } else if (isFate) {
+      hint.textContent = '🧿 命运跟随 — 绑定 NPC 命运线，观察选择与因果';
     } else {
-      hint.textContent = 'NPC 愿意配合，但会保留自己的底线和判断';
+      hint.textContent = '世界里可以有好人坏人，善恶都要有来处';
     }
     // 修改用户输入框 placeholder
     const input = document.getElementById('user-input');
-    if (input) input.placeholder = isReal ? '观察世界 / 施加干预...' : '输入你的行为...';
+    if (input) {
+      input.placeholder = isReal ? '观察世界 / 施加干预...'
+        : isFate ? '跟随某个 NPC / 投放机缘或阻碍...'
+        : '输入你的行为...';
+    }
+  }
+
+  function setActiveModeButton(mode) {
+    document.getElementById('mode-free').classList.toggle('active', mode === 'free');
+    document.getElementById('mode-real').classList.toggle('active', mode === 'real');
+    document.getElementById('mode-fate').classList.toggle('active', mode === 'fate');
   }
 
   const savedMode = getMode();
-  if (savedMode === 'real') {
-    document.getElementById('mode-free').classList.remove('active');
-    document.getElementById('mode-real').classList.add('active');
-  }
+  setActiveModeButton(savedMode);
   updateModeUI(); // 模式对应的表单/输入框状态
   document.getElementById('mode-free').addEventListener('click', () => {
     setMode('free');
-    document.getElementById('mode-free').classList.add('active');
-    document.getElementById('mode-real').classList.remove('active');
+    setActiveModeButton('free');
     updateModeUI();
   });
   document.getElementById('mode-real').addEventListener('click', () => {
     setMode('real');
-    document.getElementById('mode-real').classList.add('active');
-    document.getElementById('mode-free').classList.remove('active');
+    setActiveModeButton('real');
+    updateModeUI();
+  });
+  document.getElementById('mode-fate').addEventListener('click', () => {
+    setMode('fate');
+    setActiveModeButton('fate');
     updateModeUI();
   });
 
