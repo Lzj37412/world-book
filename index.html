@@ -118,6 +118,27 @@
     border-top: 1px solid #30363d;
     background: #0d1117;
   }
+  #rpg-quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 16px 0;
+    background: #0d1117;
+  }
+  #rpg-quick-actions button {
+    background: #21262d;
+    color: #c9d1d9;
+    border: 1px solid #30363d;
+    border-radius: 14px;
+    padding: 5px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+  }
+  #rpg-quick-actions button:hover {
+    background: #30363d;
+    border-color: #bd561d;
+  }
   #user-input {
     flex: 1;
     background: #0d1117;
@@ -490,6 +511,14 @@
       <button id="settings-btn" title="AI 设置">⚙️</button>
     </div>
     <div id="chat-log"></div>
+    <div id="rpg-quick-actions" style="display:none">
+      <button data-action="explore">🗺️ 探索周边</button>
+      <button data-action="quest">📜 寻找委托</button>
+      <button data-action="encounter">🎲 奇遇</button>
+      <button data-action="fight">⚔️ 主动出击</button>
+      <button data-action="talk">💬 找人聊聊</button>
+      <button data-action="rest">🏕️ 休整</button>
+    </div>
     <div id="input-area">
       <input id="user-input" type="text" placeholder="输入你的行为..." autofocus>
       <button id="send-btn">发送</button>
@@ -863,11 +892,23 @@ function combatProtocol() {
   return `【战斗协议】
 战斗的数值结算由程序负责，不是你的职责——你只需要在故事需要开战时"声明战斗"，程序会自动算出结果并把结果告诉你，你负责把结果写成后续剧情。
 
+以下五个字段名是程序识别的固定协议关键字，必须逐字使用这几个中文词，不能按自己的命名习惯改写、翻译成英文或替换成同义词，否则程序无法识别、战斗数值不会生效：
+"战斗"、"战斗属性"、"元素克制"、"元素"、"技能加成"
+这几个字段专门给程序识别战斗数据用，和你自己命名的其他世界数据字段（比如地点、天气、剧情线之类，命名不受限制）是两套不同的东西，不要混淆。
+
 触发战斗：故事中出现正面冲突时，在 STATE 中加入 "战斗" 字段，两个键分别是参战双方（键名自定，比如"我方"/"敌方"，或具体阵营名），值是参战角色的名字数组。例如：
 "战斗": {"张三": ["张三"], "黑风寨": ["黑风寨群匪甲", "黑风寨群匪乙"]}
-这个字段只在触发那一轮写一次，程序处理后会自动移除，不用你手动删，也不用管它有没有出现在下一轮 STATE 里。
+这个字段只在触发那一轮写一次，程序处理后会自动移除，不用你手动删，也不用管它有没有出现在下一轮 STATE 里。声明 "战斗" 的这一轮，必须在同一份 STATE 里把双方的 "战斗属性" 一起写出来，不能只声明战斗、把数值留到下一轮——尤其是玩家指令里直接给了具体数字时，必须原样写进这一轮的 "战斗属性"，不能漏写导致程序套用默认值。
 
 维护数值：在 STATE 的 "战斗属性" 字段里，为可能参战的角色维护 {生命, 攻击, 防御, 速度} 四个数值（数字类型）。没有出现在 "战斗属性" 里的角色，程序会给一份中庸的默认值。战斗造成的生命变化由程序写回这个字段，之后你要按这个字段延续伤势、死亡等因果——不要在叙事里说角色没事，除非 "战斗属性" 显示他满血。
+
+【元素克制（可选）】参考世界观自我完善——比如宝可梦式的属性克制、武侠式的招式相克、赛博朋克式的电子干扰克机械等，元素名字、谁克谁、克制多少倍伤害全部由你根据这个世界的设定自己决定，不必套用某个具体作品的规则。如果这个世界里的战斗有克制关系，在 STATE 的 "元素克制" 字段声明，格式是数组，每一条 {"克制方": "元素名", "被克方": "元素名", "倍率": 数字}，例如：
+"元素克制": [{"克制方": "火", "被克方": "草", "倍率": 2}, {"克制方": "电", "被克方": "机械单位", "倍率": 1.5}]
+然后在角色的 "战斗属性" 里给带元素的角色加一个 "元素" 字段（数组，如 ["火"]）。程序结算时会查这张表，双方元素有克制关系就按你给的倍率放大伤害，没有克制关系或整个世界不需要元素系统就不用写这两个字段，程序按普通四维计算。
+
+【技能加成（可选）】如果角色在这场战斗里使用了技能、法术、装备增益等，效果如何全部由你按剧情自由发挥，只需要把这次生效的攻击力加值换算成一个数字，写进该角色 "战斗属性" 里的 "技能加成" 字段（这一轮的临时加值，不写则视为0，不会自动累加到下一场战斗）。程序只是把这个数字加进攻击力参与计算，不会判断技能本身是否合理、加成多少合适——那是你的叙事判断，不是程序的职责。
+
+玩家有最终裁定权：如果玩家在指令里直接给出了具体数字（比如"这次技能加成按200算"、"这个元素倍率调成3倍"），把玩家给的数字原样写进对应字段，不要自己按"合理性"打折或改成别的数值，你只需要负责编一个说得过去的叙事理由（技能融合、装备觉醒、灵气爆发等）去承接这个数字。玩家的数值指令始终优先于你自己对平衡性的判断。
 
 读取结果：程序结算后会在 "战斗结果" 字段给你一句话摘要（胜方、阵亡名单）。下一轮你据此续写战斗的后果、余波和角色反应，不要重新描述或改判战斗过程本身——过程已经是确定的事实，只有结果之后发生的事才是你的叙事空间。`;
 }
@@ -1412,10 +1453,58 @@ function updateMemory(oldMemory, newState) {
 const COMBAT_DEFAULT_STATS = { 生命: 20, 攻击: 5, 防御: 3, 速度: 5 };
 const COMBAT_MAX_ROUNDS = 500;
 
-function resolveCombat(sides, statsMap) {
+// 元素克制表由AI按世界观自行声明（谁克谁、倍率多少），程序只查表不判断内容是否合理
+function buildElementCounterMap(counters) {
+  const map = new Map();
+  if (Array.isArray(counters)) {
+    counters.forEach(entry => {
+      if (entry && entry.克制方 && entry.被克方 && Number.isFinite(entry.倍率)) {
+        map.set(`${entry.克制方}→${entry.被克方}`, entry.倍率);
+      }
+    });
+  }
+  return map;
+}
+
+function elementMultiplier(counterMap, attackerElements, targetElements) {
+  if (!counterMap.size || !Array.isArray(attackerElements) || !Array.isArray(targetElements)) return 1;
+  let best = 1;
+  attackerElements.forEach(a => {
+    targetElements.forEach(t => {
+      const mult = counterMap.get(`${a}→${t}`);
+      if (Number.isFinite(mult) && mult > best) best = mult;
+    });
+  });
+  return best;
+}
+
+// 薄兜底：AI 有时会把协议字段名写成英文变体，这里只认实测中出现过的高频写法，
+// 只在标准中文字段缺失且别名字段存在时才搬运，不做穷举式猜测
+const COMBAT_FIELD_ALIASES = {
+  战斗: ['combat', 'battle'],
+  战斗属性: ['combat_attributes', 'combatStats', 'battle_stats'],
+  元素克制: ['element_crushing', 'element_system', 'elemental_counters']
+};
+
+function normalizeCombatFieldAliases(memory) {
+  if (!memory || typeof memory !== 'object') return;
+  Object.entries(COMBAT_FIELD_ALIASES).forEach(([canonical, aliases]) => {
+    if (memory[canonical] !== undefined) return;
+    for (const alias of aliases) {
+      if (memory[alias] !== undefined) {
+        memory[canonical] = memory[alias];
+        delete memory[alias];
+        break;
+      }
+    }
+  });
+}
+
+function resolveCombat(sides, statsMap, elementCounters) {
   const stats = statsMap || {};
   const sideNames = Object.keys(sides || {});
   if (sideNames.length !== 2) return null;
+  const counterMap = buildElementCounterMap(elementCounters);
 
   const fighters = [];
   sideNames.forEach(sideName => {
@@ -1428,7 +1517,9 @@ function resolveCombat(sides, statsMap) {
         生命: Number.isFinite(base.生命) ? base.生命 : COMBAT_DEFAULT_STATS.生命,
         攻击: Number.isFinite(base.攻击) ? base.攻击 : COMBAT_DEFAULT_STATS.攻击,
         防御: Number.isFinite(base.防御) ? base.防御 : COMBAT_DEFAULT_STATS.防御,
-        速度: Number.isFinite(base.速度) ? base.速度 : COMBAT_DEFAULT_STATS.速度
+        速度: Number.isFinite(base.速度) ? base.速度 : COMBAT_DEFAULT_STATS.速度,
+        元素: Array.isArray(base.元素) ? base.元素 : [],
+        技能加成: Number.isFinite(base.技能加成) ? base.技能加成 : 0
       });
     });
   });
@@ -1453,9 +1544,12 @@ function resolveCombat(sides, statsMap) {
       if (enemies.length === 0) break;
 
       const target = enemies.reduce((weakest, f) => f.生命 < weakest.生命 ? f : weakest, enemies[0]);
-      const damage = Math.max(1, attacker.攻击 - target.防御);
+      const rawAttack = attacker.攻击 + attacker.技能加成;
+      const multiplier = elementMultiplier(counterMap, attacker.元素, target.元素);
+      const damage = Math.max(1, Math.round(rawAttack * multiplier) - target.防御);
       target.生命 -= damage;
-      log.push(`${attacker.name} 对 ${target.name} 造成 ${damage} 点伤害`);
+      const multNote = multiplier > 1 ? `（元素克制×${multiplier}）` : '';
+      log.push(`${attacker.name} 对 ${target.name} 造成 ${damage} 点伤害${multNote}`);
       if (target.生命 <= 0) log.push(`💀 ${target.name} 倒下`);
 
       if (aliveOf(sideA).length === 0 || aliveOf(sideB).length === 0) break;
@@ -1469,8 +1563,12 @@ function resolveCombat(sides, statsMap) {
   const winner = aliveA && !aliveB ? sideA : (!aliveA && aliveB ? sideB : null);
   const fallen = fighters.filter(f => f.生命 <= 0).map(f => f.name);
 
+  // 技能加成是单场战斗的临时加值，结算后不写回，避免自动累加到下一场
   const updatedStats = {};
-  fighters.forEach(f => { updatedStats[f.name] = { 生命: Math.max(0, f.生命), 攻击: f.攻击, 防御: f.防御, 速度: f.速度 }; });
+  fighters.forEach(f => {
+    updatedStats[f.name] = { 生命: Math.max(0, f.生命), 攻击: f.攻击, 防御: f.防御, 速度: f.速度 };
+    if (f.元素.length > 0) updatedStats[f.name].元素 = f.元素;
+  });
 
   return { log, winner, fallen, updatedStats };
 }
@@ -2108,8 +2206,11 @@ async function submitAction() {
   }
 
   // 6.5 战斗结算（程序计算胜负，AI 只声明参战方，见 combatProtocol）
+  // 薄兜底：AI 偶尔会把协议字段名换成英文变体，识别几个实测出现过的高频写法，
+  // 不做开放式猜测——治根方案是 combatProtocol() 里已加的固定字段名约束
+  normalizeCombatFieldAliases(memory);
   if (memory.战斗) {
-    const combatResult = resolveCombat(memory.战斗, memory.战斗属性);
+    const combatResult = resolveCombat(memory.战斗, memory.战斗属性, memory.元素克制);
     delete memory.战斗;
     if (combatResult) {
       memory.战斗属性 = Object.assign({}, memory.战斗属性, combatResult.updatedStats);
@@ -2222,7 +2323,35 @@ function init() {
         : isRpg ? '输入你的行动（探索/战斗/交谈）...'
         : '输入你的行为...';
     }
+    // RPG 模式：创世界表单占位符换成冒险向示例，其余模式保持原文案
+    const npcsField = document.getElementById('sw-npcs');
+    const goalsField = document.getElementById('sw-goals');
+    const sceneField = document.getElementById('sw-scene');
+    if (npcsField) npcsField.placeholder = isRpg ? '铁匠老雷（打造装备）、旅店老板娘小芸…' : '酒保老张（情报贩子）、神秘委托人…';
+    if (goalsField) goalsField.placeholder = isRpg ? '从新人做到能独立接高阶委托 / 集齐传说装备 / 击败魔王…' : '调查失踪案 / 成为冠军 / 揭开阴谋…';
+    if (sceneField) sceneField.placeholder = isRpg ? '刚拿到冒险者执照走出公会 / 在边境小镇苏醒…' : '在出租屋醒来 / 穿越到陌生世界…';
+    // RPG 模式专属：快捷行动条
+    const quickActions = document.getElementById('rpg-quick-actions');
+    if (quickActions) quickActions.style.display = isRpg ? 'flex' : 'none';
   }
+
+  const RPG_QUICK_ACTION_TEXT = {
+    explore: '我在周围四处探索一下，看看有什么发现',
+    quest: '我想去找人接个委托或任务做',
+    encounter: '我继续往前走，看看路上会遇到什么',
+    fight: '我主动寻找冲突，找人打一场',
+    talk: '我想找附近的人聊聊，打听点消息',
+    rest: '我找个地方休整一下，恢复状态'
+  };
+  document.getElementById('rpg-quick-actions').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const text = RPG_QUICK_ACTION_TEXT[btn.dataset.action];
+    if (!text) return;
+    const input = document.getElementById('user-input');
+    input.value = text;
+    input.focus();
+  });
 
   function setActiveModeButton(mode) {
     document.getElementById('mode-free').classList.toggle('active', mode === 'free');
