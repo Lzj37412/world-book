@@ -415,6 +415,7 @@
   #mode-free.active { background: #238636; color: #fff; }
   #mode-real.active { background: #da3633; color: #fff; }
   #mode-fate.active { background: #8957e5; color: #fff; }
+  #mode-rpg.active { background: #bd561d; color: #fff; }
   .mode-hint {
     text-align: center; font-size: 10px; color: #484f58; margin-bottom: 8px;
   }
@@ -469,6 +470,7 @@
       <button id="mode-free" class="active">🎮 自由模式</button>
       <button id="mode-real">👁️ 上帝模式</button>
       <button id="mode-fate">🧿 命运跟随</button>
+      <button id="mode-rpg">⚔️ RPG冒险</button>
     </div>
     <div class="mode-hint" id="mode-hint">世界里可以有好人坏人，善恶都要有来处</div>
 
@@ -822,6 +824,20 @@ function fateModeRules() {
 如果观察者看腻了，可以切换跟随目标。新目标必须作为独立 NPC 继续推演，不继承上一个目标的主角光环。`;
 }
 
+function rpgModeRules() {
+  return `${NPC_INDEPENDENCE_CORE}
+【RPG冒险模式｜RPG Adventure】
+这是传统 RPG 的玩法：玩家扮演自己的角色，探索、战斗、成长。与自由模式不同——你要直接写玩家角色本身的行动和结果，不用只写世界那一半。
+
+玩家说要做什么，你就叙述这个行动实际发生的过程和结果（走进哪、打到了什么、找到了什么、和谁交谈），不用像自由模式那样把玩家的动作和决定留白。
+
+遇到正面冲突（打怪、比武、拦路劫道等）时，按照【战斗协议】声明参战方，交给程序结算，不要自己编胜负。程序返回结果后，你负责写战斗带来的后续剧情——受伤、掉落、经验、士气变化等。
+
+世界里的挑战应当有循序渐进的强度感，不要一上来就是足以团灭的强敌；同时也不需要每次战斗都刻意保证玩家能赢——按世界设定的合理逻辑铺展遇到的对手即可。
+
+探索、解谜、收集、交谈、做委托等非战斗行动，仍按世界设定的因果自由发挥，不必绑定固定的任务模板。`;
+}
+
 function stateOutputProtocol() {
   return `【STATE 输出格式】
 先写叙事，再输出 STATE 快照。STATE 是当前世界的完整快照，不是增量更新。
@@ -914,15 +930,21 @@ ${world}。`;
     prompt += '\n\n' + coreMemoryRules();
     prompt += '\n\n' + (isFate ? fateModeRules() : realModeRules());
     prompt += '\n\n' + stateOutputProtocol();
-    prompt += '\n\n' + combatProtocol();
     return prompt;
   }
 
+  const isRpg = mode === 'rpg';
   const identity = m.玩家身份 || m.player || m.身份 || m.玩家 || m.玩家角色 || '一个旅人';
   const location = m.位置 || m.location || m.地点 || m.当前位置 || '';
   const npcs = m.NPC || m.npcs || m.主要NPC || m.NPC列表 || m.角色 || null;
 
-  let prompt = `我在创造一个沙盒类的世界。你是GM，你主要负责推演剧情、叙事事情。世界的默认设定是自主运转的，不会因为任何事情停下，世界会在某时间段产生一些事情、暗流、灾祸等发生，详细类型事情请你自行完善并触发。
+  let prompt = isRpg
+    ? `我在创造一个RPG冒险世界。你是GM，负责运行一场可以探索、战斗、成长的冒险。世界的默认设定是自主运转的，不会因为任何事情停下，世界会在某时间段产生一些事情、暗流、灾祸等发生，详细类型事情请你自行完善并触发。
+
+【GM 设定摘要】
+世界背景：${world}
+玩家角色：${identity}。`
+    : `我在创造一个沙盒类的世界。你是GM，你主要负责推演剧情、叙事事情。世界的默认设定是自主运转的，不会因为任何事情停下，世界会在某时间段产生一些事情、暗流、灾祸等发生，详细类型事情请你自行完善并触发。
 
 【GM 设定摘要】
 世界背景：${world}
@@ -939,9 +961,9 @@ ${world}。`;
   }
 
   prompt += '\n\n' + coreMemoryRules();
-  prompt += '\n\n' + freeModeRules();
+  prompt += '\n\n' + (isRpg ? rpgModeRules() : freeModeRules());
   prompt += '\n\n' + stateOutputProtocol();
-  prompt += '\n\n' + combatProtocol();
+  if (isRpg) prompt += '\n\n' + combatProtocol();
 
   return prompt;
 }
@@ -1152,14 +1174,15 @@ ${mode === 'fate'
         return prompt;
       }
 
+      const isRpg = mode === 'rpg';
       let prompt = '';
       const parts = [];
-      if (form.world) parts.push(`玩家穿越到了${form.world}的世界里`);
+      if (form.world) parts.push(isRpg ? `这是一场发生在${form.world}的RPG冒险` : `玩家穿越到了${form.world}的世界里`);
       if (form.player) parts.push(`玩家以${form.player}的身份开始这段旅程`);
       if (form.npcs) parts.push(`这个世界中有${form.npcs}`);
       if (form.goals) parts.push(`故事走向大致是${form.goals}`);
 
-      prompt += `以下是由玩家创造的世界设定。你作为GM负责在这个设定基础上推演叙事：
+      prompt += `以下是由玩家创造的世界设定。你作为GM负责在这个设定基础上${isRpg ? '运行一场可以探索、战斗、成长的冒险' : '推演叙事'}：
 "`;
       prompt += parts.join('。');
       if (form.scene) prompt += `。${form.scene}`;
@@ -1167,12 +1190,12 @@ ${mode === 'fate'
 
 以一个自然的场景直接开场。不需要解释世界，呈现一个活着的切片。
 用第二人称"你"来叙事（指玩家角色），不要用"我"。
-
+${isRpg ? '\n直接写玩家角色本身的行动和处境，不要只写世界那一半。' : ''}
 最后输出 STATE 快照：
 <<STATE>>
 {"world": "世界名", "location": "位置", ...}
 <<ENDSTATE>>
-包含所有需要长期记忆的事实。AI 自己决定有哪些字段。`;
+包含所有需要长期记忆的事实。AI 自己决定有哪些字段。${isRpg ? '\n请为玩家角色在 STATE 中初始化"战斗属性"字段（{生命,攻击,防御,速度}四个数值），供后续战斗结算使用。' : ''}`;
       return prompt;
     }
 async function createWorld() {
@@ -2180,11 +2203,14 @@ function init() {
     // 上帝/命运跟随：观察者不在世界内，隐藏"玩家"字段
     const playerField = document.getElementById('sw-player-field');
     if (playerField) playerField.style.display = (isReal || isFate) ? 'none' : 'block';
+    const isRpg = mode === 'rpg';
     const hint = document.getElementById('mode-hint');
     if (isReal) {
       hint.textContent = '👁️ 上帝模式 — 设定世界，观察因果';
     } else if (isFate) {
       hint.textContent = '🧿 命运跟随 — 绑定 NPC 命运线，观察选择与因果';
+    } else if (isRpg) {
+      hint.textContent = '⚔️ RPG冒险 — 探索、战斗、成长，战斗数值由程序结算';
     } else {
       hint.textContent = '世界里可以有好人坏人，善恶都要有来处';
     }
@@ -2193,6 +2219,7 @@ function init() {
     if (input) {
       input.placeholder = isReal ? '观察世界 / 施加干预...'
         : isFate ? '跟随某个 NPC / 投放机缘或阻碍...'
+        : isRpg ? '输入你的行动（探索/战斗/交谈）...'
         : '输入你的行为...';
     }
   }
@@ -2201,6 +2228,7 @@ function init() {
     document.getElementById('mode-free').classList.toggle('active', mode === 'free');
     document.getElementById('mode-real').classList.toggle('active', mode === 'real');
     document.getElementById('mode-fate').classList.toggle('active', mode === 'fate');
+    document.getElementById('mode-rpg').classList.toggle('active', mode === 'rpg');
   }
 
   const savedMode = getMode();
@@ -2219,6 +2247,11 @@ function init() {
   document.getElementById('mode-fate').addEventListener('click', () => {
     setMode('fate');
     setActiveModeButton('fate');
+    updateModeUI();
+  });
+  document.getElementById('mode-rpg').addEventListener('click', () => {
+    setMode('rpg');
+    setActiveModeButton('rpg');
     updateModeUI();
   });
 
