@@ -27,7 +27,7 @@ function hasApiKey() {
 async function callSearch(query) {
   const encoded = encodeURIComponent(query.trim());
   const server = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? '' : 'https://memory-sandbox-api.onrender.com';
+    ? '' : 'https://world-book-production.up.railway.app';
   const res = await fetch(`${server}/api/search?q=${encoded}`);
   if (!res.ok) {
     const t = await res.text().catch(() => '');
