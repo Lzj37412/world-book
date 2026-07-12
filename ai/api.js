@@ -17,14 +17,35 @@ function hasApiKey() {
   return !!cfg.apiKey;
 }
 
+// ---------- 联网搜索（走本地后端代理） ----------
+
+/**
+ * 调用本地后端的百度搜索代理
+ * @param {string} query
+ * @returns {Promise<Array>} 搜索结果数组 [{title, url, content, snippet, website}]
+ */
+async function callSearch(query) {
+  const encoded = encodeURIComponent(query.trim());
+  const server = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? '' : 'https://memory-sandbox-api.onrender.com';
+  const res = await fetch(`${server}/api/search?q=${encoded}`);
+  if (!res.ok) {
+    const t = await res.text().catch(() => '');
+    throw new Error(`搜索失败 ${res.status}: ${t.slice(0, 100)}`);
+  }
+  const data = await res.json();
+  return data.results || [];
+}
+
 /**
  * 调用 AI API
  * @param {string} systemPrompt - 系统提示词（GM 角色）
  * @param {string} userPrompt - 用户输入（含当前记忆回填）
  * @param {object} [configOverride] - 可选，临时覆盖 API 配置（用于创世界路由）
+ * @param {object} [opts] - 可选，{maxTokens, temperature, timeoutMs}
  * @returns {Promise<string>} AI 回复文本
  */
-async function callAI(systemPrompt, userPrompt, configOverride) {
+async function callAI(systemPrompt, userPrompt, configOverride, opts) {
   const config = configOverride || getConfig();
   const provider = config.provider || 'ds';
   const apiKey = config.apiKey || '';
@@ -34,15 +55,18 @@ async function callAI(systemPrompt, userPrompt, configOverride) {
   }
 
   if (provider === 'gemini') {
-    return callGemini(systemPrompt, userPrompt, config);
+    return callGemini(systemPrompt, userPrompt, config, opts);
   }
-  return callOpenAI(systemPrompt, userPrompt, config);
+  return callOpenAI(systemPrompt, userPrompt, config, opts);
 }
 
 /** OpenAI 兼容接口（DeepSeek / 本地模型等） */
-async function callOpenAI(systemPrompt, userPrompt, config) {
+async function callOpenAI(systemPrompt, userPrompt, config, opts) {
   const endpoint = (config.endpoint || 'https://api.deepseek.com').replace(/\/+$/, '');
   const model = config.model || 'deepseek-chat';
+  const maxTokens = opts?.maxTokens || 1600;
+  const temperature = opts?.temperature ?? 0.65;
+  const timeoutMs = opts?.timeoutMs || 120000;
 
   const body = {
     model: model,
@@ -50,24 +74,34 @@ async function callOpenAI(systemPrompt, userPrompt, config) {
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ],
-    temperature: 0.85
+    temperature: temperature,
+    max_tokens: maxTokens
   };
   // 硅基流动 Qwen 默认开启思考模式→关闭，避免思维链干扰输出
   if (config.provider === 'sf') body.enable_thinking = false;
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 120000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   // endpoint 已经是完整 URL（含 /v1/chat/completions）
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${config.apiKey}`
-    },
-    body: JSON.stringify(body),
-    signal: controller.signal
-  });
+  let res;
+  try {
+    res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiKey}`
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+  } catch (e) {
+    clearTimeout(timeout);
+    if (e.name === 'AbortError') {
+      throw new Error('本轮请求过重，超时未响应，建议精简输入或重试');
+    }
+    throw e;
+  }
   clearTimeout(timeout);
 
   if (!res.ok) {
@@ -81,29 +115,41 @@ async function callOpenAI(systemPrompt, userPrompt, config) {
 }
 
 /** Google Gemini 接口 */
-async function callGemini(systemPrompt, userPrompt, config) {
+async function callGemini(systemPrompt, userPrompt, config, opts) {
   const endpoint = (config.endpoint || 'https://generativelanguage.googleapis.com').replace(/\/+$/, '');
   const model = config.model || 'gemini-2.0-flash';
+  const maxTokens = opts?.maxTokens || 1600;
+  const temperature = opts?.temperature ?? 0.65;
+  const timeoutMs = opts?.timeoutMs || 90000;
 
   const body = {
     system_instruction: { parts: [{ text: systemPrompt }] },
     contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
     generationConfig: {
-      temperature: 0.85,
-      maxOutputTokens: 4096
+      temperature: temperature,
+      maxOutputTokens: maxTokens
     }
   };
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 90000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   const url = `${endpoint}/v1beta/models/${model}:generateContent?key=${config.apiKey}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: controller.signal
-  });
+  let res;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+  } catch (e) {
+    clearTimeout(timeout);
+    if (e.name === 'AbortError') {
+      throw new Error('本轮请求过重，超时未响应，建议精简输入或重试');
+    }
+    throw e;
+  }
   clearTimeout(timeout);
 
   if (!res.ok) {

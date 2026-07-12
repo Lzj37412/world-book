@@ -804,7 +804,10 @@ AI 不得替观察者做决定、不得代为规划"最优解"、不得暗示观
 	每个实体（NPC/势力/地点）在每一轮次中每次出现时，段首必须带表情符号。
 	这是硬性要求，不是风格建议。
 	正确示例：🔴 屠烈 — 内心独白…
-	错误示例：屠烈派人…`;
+	错误示例：屠烈派人…
+
+【资料引用规则】
+如果 prompt 中出现了【联网已确认资料】段落，优先引用其中的内容作为世界事实依据。不要与已确认资料矛盾。已确认资料中没有的内容，可以按自身知识推进，但需保持因果一致性。`;
 }
 
 function freeModeRules() {
@@ -820,7 +823,7 @@ function freeModeRules() {
 - ❌ 不写玩家角色的对话、行动和决定
 - ❌ 不给玩家指方向、定目标、替玩家选择路线
 
-如果玩家只说“继续”“看看”“然后呢”这类含糊输入，只推进世界和 NPC 的自然反应。玩家角色可以沉默、旁观、等待，除非玩家明确说自己要做什么。
+如果玩家只说”继续””看看””然后呢”这类含糊输入，只推进世界和 NPC 的自然反应。玩家角色可以沉默、旁观、等待，除非玩家明确说自己要做什么。
 
 玩家尝试行动时，你描述 NPC 和世界的反应。高风险、高收益、会改变长期格局的结果，要按当时条件一步步推进，不要一轮就轻易完成。
 
@@ -828,8 +831,11 @@ function freeModeRules() {
 
 创世界首轮可以适当长一些以建立世界感；此后每轮叙事控制在150-250字，只呈现最关键的一个场景变化或NPC行动，不在同一轮堆叠多个事件。玩家若需展开细节，会主动要求。
 
+【资料引用规则】
+如果 prompt 中出现了【联网已确认资料】段落，优先引用其中的内容作为世界事实依据。不要与已确认资料矛盾。已确认资料中没有的内容，可以按自身知识推进，但需保持因果一致性。
+
 【协助模式——范围临时扩大】
-只有玩家明确说“帮我……”“替我说……”“给我几个说法/选项”等请求时，才可以帮玩家润色表达、代拟台词或列出可能行动。
+只有玩家明确说”帮我……””替我说……””给我几个说法/选项”等请求时，才可以帮玩家润色表达、代拟台词或列出可能行动。
 协助内容只能作为建议或选项，不能写成玩家已经执行，不能替玩家选定最终决定。
 除此之外，一律只写世界反应，不碰玩家那半边。`;
 }
@@ -852,7 +858,10 @@ function fateModeRules() {
 
 命运跟随不需要把一生写成流水账。默认按关键阶段推进：转折、选择、代价、关系变化、命运节点。观察者想细看某一天、某个人、某场阴谋时，再展开细节。
 
-如果观察者看腻了，可以切换跟随目标。新目标必须作为独立 NPC 继续推演，不继承上一个目标的主角光环。`;
+如果观察者看腻了，可以切换跟随目标。新目标必须作为独立 NPC 继续推演，不继承上一个目标的主角光环。
+
+【资料引用规则】
+如果 prompt 中出现了【联网已确认资料】段落，优先引用其中的内容作为世界事实依据。不要与已确认资料矛盾。已确认资料中没有的内容，可以按自身知识推进，但需保持因果一致性。`;
 }
 
 function rpgModeRules() {
@@ -866,28 +875,34 @@ function rpgModeRules() {
 
 世界里的挑战应当有循序渐进的强度感，不要一上来就是足以团灭的强敌；同时也不需要每次战斗都刻意保证玩家能赢——按世界设定的合理逻辑铺展遇到的对手即可。
 
-探索、解谜、收集、交谈、做委托等非战斗行动，仍按世界设定的因果自由发挥，不必绑定固定的任务模板。`;
+探索、解谜、收集、交谈、做委托等非战斗行动，仍按世界设定的因果自由发挥，不必绑定固定的任务模板。
+
+【资料引用规则】
+如果 prompt 中出现了【联网已确认资料】段落，优先引用其中的内容作为世界事实依据。不要与已确认资料矛盾。已确认资料中没有的内容，可以按自身知识推进，但需保持因果一致性。`;
 }
 
-function stateOutputProtocol() {
-  return `【STATE 输出格式】
-先写叙事，再输出 STATE 快照。STATE 是当前世界的完整快照，不是增量更新。
+function statePatchProtocol() {
+  return `【STATE PATCH 输出格式】
+先写叙事，再输出 PATCH。PATCH 只写本轮变化，不重写整份世界。
 
-<<STATE>>
-{"world": "世界名", "location": "位置", ...}
-<<ENDSTATE>>
+<<PATCH>>
+{"set": {"world": "世界名", "location": "位置"}, "append": {"events": ["本轮新增事件"]}, "delete": ["旧字段.临时标记"]}
+<<ENDPATCH>>
 
 规则：
-- 叙事在先，STATE 在后。不要把叙事内容放到STATE里面。
+- 叙事在先，PATCH 在后。不要把叙事内容放到 PATCH 里面。
 - 字段用中文。
-- 没有变化的字段也要包含（继承），不再有效的字段不要包含。
-- 字段名称、层级、内容不做限制。AI自己决定记什么。
-- 之前明确设定过的实体（角色、物品、关系、事件等），除非已失效或被替代，否则每轮继续携带。
-- STATE 必须是完整的。宁可多写，不要漏写。
-- 如果某些历史已经彻底与当前剧情无关（已结束的事件、已离场且不会回归的角色等），可以精简不带，拿不准就留着。
-	- 关于精简的判断标准：字段数量本身不是目标，叙事相关性才是。每轮自问——这个字段在未来 3-5 轮里是否还会影响剧情走向？如果不会，就可以放心精简。宁可因为拿不准而多留一轮，也不要贸然丢弃可能还有用的信息。
+- 只写本轮确实发生变化的内容。
+- \`set\` 用来新增或覆盖字段，支持点路径，例如 \`NPC档案.林晚.当前行动\`。
+- \`append\` 用来追加数组内容；目标不存在时自动创建数组。
+- \`delete\` 用来删除字段，支持点路径。
+- 没有变化的内容不要重复写。
+- 之前明确设定过的实体（角色、物品、关系、事件等），除非本轮确实变化，否则不要重写。
+- 创世界首轮可以把初始资料拆成 \`set\` 和 \`append\`；后续轮次只写增量。
+- 如果某些历史已经彻底与当前剧情无关（已结束的事件、已离场且不会回归的角色等），可以在 \`delete\` 里移除。
 - 创世界首轮必须为所有主要NPC生成【NPC档案】字段，每个NPC包含：性格特质（固定，不随叙事改变）、当前目标（每轮根据因果更新）、当前行动（每轮根据因果更新）、对玩家态度（在性格特质约束的上下限内随因果演变）。性格特质决定这个NPC态度的上限和下限——比如骄傲的NPC即使受恩，上限也只是漠然接受，不会主动感谢，不可突破。若STATE中【NPC档案】字段为空、或叙事里已出现但档案里没有收录的角色，该轮输出视为不完整——必须先补全所有出现过的NPC档案，再继续后续叙事，不可跳过。
-- 若世界基于已有IP原作，创世界首轮同时生成【剧情锚点】字段，记录当前剧情阶段和下一个预期发生的原版关键事件；每轮推进后更新此字段，反映剧情进度。`;
+- 若世界基于已有IP原作，创世界首轮同时生成【剧情锚点】字段，记录当前剧情阶段和下一个预期发生的原版关键事件；每轮推进后更新此字段，反映剧情进度。
+- 若对某个已有IP原作的具体事实不确信，在 PATCH 中用 \`set\` 将 \`facts_cache.pending\` 设为数组，例如 \`{"set": {"facts_cache.pending": ["宝可梦关都地区道馆顺序"]}}\`。程序会在下一轮自动联网搜索并缓存结果到 \`facts_cache.entries\`，供你后续查阅。不要自己编造不确定的事实，让程序去查。`;
 }
 
 // ---------- 战斗协议（数值结算交给程序，AI 只声明参战方） ----------
@@ -980,7 +995,7 @@ ${world}。`;
 
     prompt += '\n\n' + coreMemoryRules();
     prompt += '\n\n' + (isFate ? fateModeRules() : realModeRules());
-    prompt += '\n\n' + stateOutputProtocol();
+    prompt += '\n\n' + statePatchProtocol();
     return prompt;
   }
 
@@ -1013,12 +1028,13 @@ ${world}。`;
 
   prompt += '\n\n' + coreMemoryRules();
   prompt += '\n\n' + (isRpg ? rpgModeRules() : freeModeRules());
-  prompt += '\n\n' + stateOutputProtocol();
+  prompt += '\n\n' + statePatchProtocol();
   if (isRpg) prompt += '\n\n' + combatProtocol();
 
   return prompt;
 }
-function flattenValue(val, indent = 0) {
+function flattenValue(val, indent = 0, maxDepth = 6, depth = 0) {
+  if (depth > maxDepth) return `${'  '.repeat(indent)}[太深，省略]`;
   const pad = '  '.repeat(indent);
   if (val === null || val === undefined) return `${pad}（无）`;
   if (typeof val === 'string') return `${pad}${val}`;
@@ -1027,13 +1043,13 @@ function flattenValue(val, indent = 0) {
     if (val.length === 0) return `${pad}（无）`;
     const hasObjectItems = val.some(v => typeof v === 'object' && v !== null);
     if (!hasObjectItems) {
-      return val.map(v => flattenValue(v, indent)).join(', ');
+      return val.map(v => flattenValue(v, indent, maxDepth, depth)).join(', ');
     }
     return val.map((v, i) => {
       if (typeof v === 'object' && v !== null) {
-        return `${pad}[${i + 1}]\n${flattenValue(v, indent + 1)}`;
+        return `${pad}[${i + 1}]\n${flattenValue(v, indent + 1, maxDepth, depth + 1)}`;
       }
-      return `${pad}${flattenValue(v, indent)}`;
+      return `${pad}${flattenValue(v, indent, maxDepth, depth)}`;
     }).join('\n');
   }
   if (typeof val === 'object') {
@@ -1041,12 +1057,104 @@ function flattenValue(val, indent = 0) {
     if (entries.length === 0) return `${pad}（空）`;
     return entries.map(([k, v]) => {
       if (typeof v === 'object' && v !== null) {
-        return `${pad}${k}:\n${flattenValue(v, indent + 1)}`;
+        return `${pad}${k}:\n${flattenValue(v, indent + 1, maxDepth, depth + 1)}`;
       }
       return `${pad}${k}: ${v}`;
     }).join('\n');
   }
   return `${pad}${String(val)}`;
+}
+
+// ---------- 相关资料选择器 ----------
+
+/**
+ * 从 memory 中筛选"本轮相关资料"。
+ * 关键词来源：玩家输入、当前位置。
+ * 完整 memory 仍存在本地，只把匹配内容放进 prompt。
+ * 若 AI 需要访问未匹配的资料，可在叙事中提到关键词，下一轮自动带上。
+ */
+function selectRelevantMemory(input, memory) {
+  if (!memory || typeof memory !== 'object') return '';
+  if (Object.keys(memory).length === 0) return '';
+
+  const tokens = (input || '').toLowerCase().split(/[\s,，。！？、；：""''（）\(\)\n\r]+/).filter(t => t.length >= 2);
+  const uniqueTokens = [...new Set(tokens)];
+
+  const location = memory.位置 || memory.location || memory.地点 || memory.当前位置 || '';
+  const alwaysTokens = [];
+  if (location && typeof location === 'string') {
+    location.split(/[\s,，。、]+/).filter(t => t.length >= 2).forEach(t => alwaysTokens.push(t.toLowerCase()));
+  }
+
+  const matchedKeys = new Set();
+  matchedKeys.add('世界设定原文');
+
+  function matchValue(val, depth = 0) {
+    if (depth > 3) return false;
+    if (typeof val === 'string') {
+      const v = val.toLowerCase();
+      for (const tok of uniqueTokens) { if (v.includes(tok)) return true; }
+      for (const tok of alwaysTokens) { if (v.includes(tok)) return true; }
+      return false;
+    }
+    if (typeof val === 'object' && val !== null) {
+      return Object.values(val).some(v => matchValue(v, depth + 1));
+    }
+    return false;
+  }
+
+  const priorityKeys = ['NPC档案', '角色档案', '剧情锚点', '已发生事件', '战斗', '战斗属性', '元素克制', 'facts_cache'];
+
+  for (const key of Object.keys(memory)) {
+    if (key === '世界设定原文') continue;
+    const val = memory[key];
+    if (matchValue(val)) { matchedKeys.add(key); continue; }
+    const kl = key.toLowerCase();
+    for (const tok of uniqueTokens) { if (kl.includes(tok)) { matchedKeys.add(key); break; } }
+    if (matchedKeys.has(key)) continue;
+    for (const tok of alwaysTokens) { if (kl.includes(tok)) { matchedKeys.add(key); break; } }
+  }
+
+  for (const pk of priorityKeys) {
+    if (pk in memory && !matchedKeys.has(pk)) matchedKeys.add(pk);
+  }
+
+  const worldDesc = memory.世界设定原文 || '';
+  const parts = [];
+  if (worldDesc) parts.push(`【当前世界】\n${worldDesc}`);
+
+  // facts_cache 搜索结果格式化输出（作为可引用资料）
+  const fc = memory?.facts_cache?.entries;
+  if (fc && typeof fc === 'object') {
+    const fcLines = [];
+    for (const [key, entry] of Object.entries(fc)) {
+      const results = entry.results || [];
+      if (results.length === 0) continue;
+      const title = entry.query || key;
+      const summaries = results.slice(0, 3).map(r =>
+        `- ${r.title || ''}（${r.website || ''}）: ${(r.snippet || r.content || '').slice(0, 120)}`
+      ).join('\n');
+      fcLines.push(`【${title}】\n${summaries}`);
+    }
+    if (fcLines.length > 0) {
+      parts.push(`【联网已确认资料】\n程序已联网缓存了以下参考信息，不要自行编造这些事实：\n${fcLines.join('\n\n')}`);
+    }
+  }
+
+  const dataKeys = [...matchedKeys].filter(k => k !== '世界设定原文' && k !== 'facts_cache');
+  if (dataKeys.length > 0) {
+    const dataLines = dataKeys.map(key => {
+      const val = memory[key];
+      const v = flattenValue(val, 0, 4);
+      if (typeof val === 'object' && val !== null && !Array.isArray(val) && Object.keys(val).length > 0) {
+        return `${key}:\n${v}`;
+      }
+      return `${key}: ${v}`;
+    });
+    parts.push(`【世界数据】\n${dataLines.join('\n')}`);
+  }
+
+  return parts.join('\n\n');
 }
 
 // HTML 版递归展开（用于 renderMemoryView）
@@ -1086,36 +1194,16 @@ function flattenValueHTML(val, depth = 0) {
 
 function buildPrompt(input, memory, recentHistory) {
   const mode = getMode();
-  const worldDesc = memory && memory.世界设定原文 ? memory.世界设定原文 : '';
-  const suppressKeys = ['世界设定原文'];
   const isReal = mode === 'real';
   const isFate = mode === 'fate';
 
-  const dataLines = Object.entries(memory || {})
-    .filter(([k]) => !suppressKeys.includes(k))
-    .map(([key, val]) => {
-      const v = flattenValue(val, 0);
-      if (typeof val === 'object' && val !== null && !Array.isArray(val) && Object.keys(val).length > 0) {
-        return `${key}:\n${v}`;
-      }
-      return `${key}: ${v}`;
-    });
-  const dataText = dataLines.length > 0 ? dataLines.join('\n') : '';
+  // 相关资料选择：只筛本轮相关的 memory 字段，不再全量铺入
+  const worldSection = selectRelevantMemory(input, memory) || '（无）';
 
   const historyPrefix = (isReal || isFate) ? '观察者' : '玩家';
   const historyText = (recentHistory && recentHistory.length > 0)
     ? recentHistory.map(h => `${historyPrefix}：${h.input}\nGM：${h.narrative}`).join('\n\n')
     : '（无）';
-
-  let worldSection = '';
-  if (worldDesc) {
-    worldSection = `【当前世界】\n${worldDesc}`;
-    if (dataText) worldSection += `\n\n【世界数据】\n${dataText}`;
-  } else if (dataText) {
-    worldSection = `【当前世界状态】\n${dataText}`;
-  } else {
-    worldSection = '（无）';
-  }
 
   const actionLabel = (isReal || isFate) ? '【观察者指令】' : '【玩家行动】';
   const footer = isReal
@@ -1124,12 +1212,13 @@ function buildPrompt(input, memory, recentHistory) {
       ? '根据当前世界状态推进目标 NPC 的命运线。默认第三人称贴身叙事，可以适当拉远呈现他不知道的阴谋、机缘和外部变化。观察者的干预只能作为外部原因，不能直接改变 NPC 意志。'
       : '根据当前状态和玩家行动推进剧情。基于已有事实延续发展，不重复描写已经建立的环境细节。';
 
-  return `【最近对话】\n${historyText}\n\n${worldSection}\n\n${actionLabel}\n${input}\n\n${footer}\n\n---\n请在叙事结束后输出 STATE 快照（<<STATE>>...<<ENDSTATE>>）\n字段名与上一轮保持一致，不要临时改用新的命名方式描述同一件事。 ---`;
+  return `【最近对话】\n${historyText}\n\n${worldSection}\n\n${actionLabel}\n${input}\n\n${footer}\n\n---\n请在叙事结束后输出 PATCH（<<PATCH>>...<<ENDPATCH>>）\n只写本轮变化，不要重写整份 STATE。 ---`;
 }
 // ---------- 解析 AI 输出（叙事 + \`\`\`state JSON```） ----------
 
 function parseAIOutput(text) {
   let narrative = text;
+  let patch = null;
   let state = null;
 
   // 轻量 JSON 修复：尝试解析，失败时清除尾随逗号后重试
@@ -1141,12 +1230,20 @@ function parseAIOutput(text) {
     }
   }
 
-  // ① 优先找 <<STATE>>...<<ENDSTATE>> 协议标记（最可靠）
+  // ① 优先找 <<PATCH>>...<<ENDPATCH>> 协议标记（最可靠）
+  const patchMatch = text.match(/<<PATCH>>\s*\n?([\s\S]*?)<<ENDPATCH>>/);
+  if (patchMatch) {
+    const raw = patchMatch[1].trim();
+    patch = tryParse(raw);
+    narrative = text.replace(patchMatch[0], '').trim();
+    return { narrative, patch, state };
+  }
+
+  // ② 兼容旧版 <<STATE>>...<<ENDSTATE>>
   const markerMatch = text.match(/<<STATE>>\s*\n?([\s\S]*?)<<ENDSTATE>>/);
   if (markerMatch) {
     const raw = markerMatch[1].trim();
     state = tryParse(raw);
-    // 如果 JSON 解析失败，尝试按 key:value 行解析（AI 有时输出纯文本键值对）
     if (!state) {
       const kvLines = raw.split('\n');
       const kv = {};
@@ -1162,33 +1259,32 @@ function parseAIOutput(text) {
       if (hasKV) state = kv;
     }
     narrative = text.replace(markerMatch[0], '').trim();
-    // 无论解析成功与否，标记内容已从 narrative 摘除 → 不会露 Bare JSON
-    return { narrative, state };
+    return { narrative, patch: state, state };
   }
 
-  // ② 找任意 ```...``` 代码块（不限语言标签，不认也清掉）
+  // ③ 找任意 ```...``` 代码块（不限语言标签，不认也清掉）
   const blockMatch = text.match(/```\w*\s*\n?([\s\S]*?)```/);
   if (blockMatch) {
-    state = tryParse(blockMatch[1].trim());
+    patch = tryParse(blockMatch[1].trim());
     narrative = text.replace(blockMatch[0], '').trim();
-    // 同上：解析失败 narrative 也是干净的 — 宁可丢掉一轮 STATE
-    return { narrative, state };
+    // 同上：解析失败 narrative 也是干净的 — 宁可丢掉一轮 PATCH
+    return { narrative, patch, state: patch };
   }
 
-  // ③ 末尾 {...} 降级（无代码块时使用）
+  // ④ 末尾 {...} 降级（无代码块时使用）
   const lastClose = text.lastIndexOf('}');
   if (lastClose > 0) {
     const lastOpen = text.lastIndexOf('{', lastClose);
     if (lastOpen >= 0) {
-      state = tryParse(text.substring(lastOpen, lastClose + 1));
-      if (state) {
+      patch = tryParse(text.substring(lastOpen, lastClose + 1));
+      if (patch) {
         narrative = text.substring(0, lastOpen).trim();
-        return { narrative, state };
+        return { narrative, patch, state: patch };
       }
     }
   }
 
-  return { narrative, state };
+  return { narrative, patch, state };
 }
 
 // ---------- 创世界 ----------
@@ -1217,11 +1313,11 @@ ${mode === 'fate'
           : '直接呈现一个活着的切片——描述这个世界此刻正在发生什么。'}
 不需要"你"这个人称，观察者不在世界内。
 
-最后输出 STATE 快照：
-<<STATE>>
-{"world": "世界名", "location": "位置", ...}
-<<ENDSTATE>>
-包含所有需要长期记忆的事实。AI 自己决定有哪些字段。`;
+最后输出 PATCH：
+<<PATCH>>
+{"set": {"world": "世界名", "location": "位置"}, "append": {"events": ["本轮新增事件"]}, "delete": ["旧字段.临时标记"]}
+<<ENDPATCH>>
+包含所有需要长期记忆的变化。AI 自己决定有哪些字段。`;
         return prompt;
       }
 
@@ -1242,11 +1338,11 @@ ${mode === 'fate'
 以一个自然的场景直接开场。不需要解释世界，呈现一个活着的切片。
 用第二人称"你"来叙事（指玩家角色），不要用"我"。
 ${isRpg ? '\n直接写玩家角色本身的行动和处境，不要只写世界那一半。' : ''}
-最后输出 STATE 快照：
-<<STATE>>
-{"world": "世界名", "location": "位置", ...}
-<<ENDSTATE>>
-包含所有需要长期记忆的事实。AI 自己决定有哪些字段。${isRpg ? '\n请为玩家角色在 STATE 中初始化"战斗属性"字段（{生命,攻击,防御,速度}四个数值），供后续战斗结算使用。' : ''}`;
+最后输出 PATCH：
+<<PATCH>>
+{"set": {"world": "世界名", "location": "位置"}, "append": {"events": ["本轮新增事件"]}, "delete": ["旧字段.临时标记"]}
+<<ENDPATCH>>
+包含所有需要长期记忆的变化。AI 自己决定有哪些字段。${isRpg ? '\n请为玩家角色在 PATCH 中初始化"战斗属性"字段（{生命,攻击,防御,速度}四个数值），供后续战斗结算使用。' : ''}`;
       return prompt;
     }
 async function createWorld() {
@@ -1281,16 +1377,36 @@ async function createWorld() {
   }
 
   try {
-    const aiText = await callAI(sysPrompt, userPrompt, wcConfig);
-    const { narrative, state } = parseAIOutput(aiText);
+    // 创世界前自动搜索：如果表单写了世界类型，尝试联网补全背景资料
+    if (form.world && form.world.length >= 2) {
+      const searchQ = form.world + (form.goals ? ' ' + form.goals : '') + (form.npcs ? ' ' + form.npcs : '');
+      try {
+        const searchRes = await callSearch(searchQ.slice(0, 60));
+        if (searchRes && searchRes.length > 0) {
+          const initialMemory = {};
+          if (!initialMemory.facts_cache) initialMemory.facts_cache = { entries: {}, pending: [] };
+          const key = form.world.toLowerCase().slice(0, 30);
+          initialMemory.facts_cache.entries[key] = { query: searchQ.slice(0, 60), results: searchRes, fetchedAt: Date.now() };
+          // 预写入 localStorage，applyStatePatch 时会读取
+          localStorage.setItem('ai_memory', JSON.stringify(initialMemory));
+        }
+      } catch (_) { /* 搜索失败不阻塞创世界 */ }
+    }
+    const aiText = await callAI(sysPrompt, userPrompt, wcConfig, { maxTokens: 3000, temperature: 0.65 });
+    const { narrative, patch, state } = parseAIOutput(aiText);
+    const initialPatch = patch || state;
 
     // 保存初始状态（含表单固定字段 + 原文）
-    if (state) {
+    if (initialPatch) {
       // 固定字段名：确保身份卡能准确读取，不受AI自由措辞影响
       const mode = getMode();
-      if (form.world && !state.world && !state.世界观) state.world = form.world;
-      if (mode === 'free' && form.player && !state.玩家身份 && !state.玩家) state.玩家身份 = form.player;
-      if (form.npcs && !state.NPC && !state.主要NPC) state.NPC = form.npcs;
+      if (form.world && !initialPatch.world && !initialPatch.世界观) initialPatch.set = Object.assign({}, initialPatch.set, { world: form.world });
+      if (mode === 'free' && form.player && !(initialPatch.set && (initialPatch.set.玩家身份 || initialPatch.set.玩家)) && !initialPatch.玩家身份 && !initialPatch.玩家) {
+        initialPatch.set = Object.assign({}, initialPatch.set, { 玩家身份: form.player });
+      }
+      if (form.npcs && !(initialPatch.set && (initialPatch.set.NPC || initialPatch.set.主要NPC)) && !initialPatch.NPC && !initialPatch.主要NPC) {
+        initialPatch.set = Object.assign({}, initialPatch.set, { NPC: form.npcs });
+      }
       const descParts = [];
       if (form.world) descParts.push(`这是一个${form.world}的世界`);
       if (mode === 'free' && form.player) descParts.push(`玩家穿越而来，身份是${form.player}`);
@@ -1298,15 +1414,15 @@ async function createWorld() {
       else if (form.npcs) descParts.push(`玩家认识的人有${form.npcs}`);
       if (form.goals) descParts.push(mode === 'fate' ? `命运观察的大致方向是${form.goals}` : `玩家给出的故事方向大致是${form.goals}`);
       if (form.scene) descParts.push(form.scene);
-      state.世界设定原文 = descParts.join('。') + '。';
-      updateMemory({}, state);
+      initialPatch.set = Object.assign({}, initialPatch.set, { 世界设定原文: descParts.join('。') + '。' });
+      applyStatePatch({}, initialPatch);
 
-      // 有 STATE → 正常切主界面
+      // 有 PATCH → 正常切主界面
       captureSnapshot(loadMemory());
       document.getElementById('start-screen').classList.add('hidden');
       document.getElementById('app').style.display = 'flex';
 
-      const worldName = state.world || '这个';
+      const worldName = (loadMemory().world || state?.world || '这个');
       appendMessage('narrator', `🤖 ${narrative || `欢迎来到${worldName}世界。你睁开眼睛，周围的一切陌生而真实。`}`);
       renderMemoryView(loadMemory());
       updateTurnCount();
@@ -1437,23 +1553,96 @@ function closeModal(id) {
   document.getElementById(id).classList.remove('open');
 }
 
-// ---------- 更新 Memory（全量替换：STATE 是完整快照） ----------
+// ---------- 更新 Memory（PATCH 增量合并） ----------
 
-function updateMemory(oldMemory, newState) {
-  if (!newState || typeof newState !== 'object' || Object.keys(newState).length === 0) {
-    return false; // 没有有效状态，不更新
+function cloneValue(val) {
+  return val === undefined ? undefined : JSON.parse(JSON.stringify(val));
+}
+
+function splitPath(path) {
+  return String(path).split('.').map(part => part.trim()).filter(Boolean);
+}
+
+function getPathTarget(root, pathParts, createMissing) {
+  let cur = root;
+  for (let i = 0; i < pathParts.length - 1; i++) {
+    const key = pathParts[i];
+    const next = cur[key];
+    if (next === undefined || next === null || typeof next !== 'object' || Array.isArray(next)) {
+      if (!createMissing) return null;
+      cur[key] = {};
+    }
+    cur = cur[key];
   }
-  // 保护系统字段：世界设定原文是玩家表单生成的静态锚点，不是 AI 的输出字段
-  // AI 不会在 STATE 中回传它，所以全量替换前先保留，替换后合并回去
+  return cur;
+}
+
+function setByPath(root, path, value) {
+  const parts = splitPath(path);
+  if (parts.length === 0) return;
+  const target = getPathTarget(root, parts, true);
+  if (!target) return;
+  target[parts[parts.length - 1]] = cloneValue(value);
+}
+
+function deleteByPath(root, path) {
+  const parts = splitPath(path);
+  if (parts.length === 0) return;
+  const target = getPathTarget(root, parts, false);
+  if (!target) return;
+  delete target[parts[parts.length - 1]];
+}
+
+function appendByPath(root, path, value) {
+  const parts = splitPath(path);
+  if (parts.length === 0) return;
+  const target = getPathTarget(root, parts, true);
+  if (!target) return;
+  const key = parts[parts.length - 1];
+  const incoming = Array.isArray(value) ? value : [value];
+  const current = target[key];
+  if (current === undefined) {
+    target[key] = cloneValue(incoming);
+    return;
+  }
+  if (Array.isArray(current)) {
+    target[key] = current.concat(cloneValue(incoming));
+    return;
+  }
+  target[key] = [current].concat(cloneValue(incoming));
+}
+
+function applyStatePatch(oldMemory, patch) {
+  if (!patch || typeof patch !== 'object') return false;
+
   const preservedDesc = oldMemory.世界设定原文 || null;
+  const hasStructuredPatch = patch.set !== undefined || patch.append !== undefined || patch.delete !== undefined;
 
-  // 全量替换：STATE 是完整快照，不在 STATE 中的旧字段自然废弃
-  Object.keys(oldMemory).forEach(k => delete oldMemory[k]);
-  Object.assign(oldMemory, newState);
+  if (!hasStructuredPatch) {
+    const keys = Object.keys(patch);
+    if (keys.length === 0) return false;
+    keys.forEach(k => {
+      if (patch[k] !== undefined) oldMemory[k] = cloneValue(patch[k]);
+      else delete oldMemory[k];
+    });
+  } else {
+    if (patch.delete) {
+      const deleteList = Array.isArray(patch.delete) ? patch.delete : [patch.delete];
+      deleteList.forEach(path => deleteByPath(oldMemory, path));
+    }
+    if (patch.set && typeof patch.set === 'object') {
+      Object.entries(patch.set).forEach(([path, value]) => setByPath(oldMemory, path, value));
+    }
+    if (patch.append && typeof patch.append === 'object') {
+      Object.entries(patch.append).forEach(([path, value]) => appendByPath(oldMemory, path, value));
+    }
+    Object.entries(patch).forEach(([key, value]) => {
+      if (key === 'set' || key === 'append' || key === 'delete') return;
+      if (value !== undefined) setByPath(oldMemory, key, value);
+    });
+  }
 
-  // 系统字段不受 AI 输出影响，合并回去
   if (preservedDesc) oldMemory.世界设定原文 = preservedDesc;
-
   saveMemory(oldMemory);
   return true;
 }
@@ -1606,14 +1795,20 @@ async function realAI(input, memory, recentHistory) {
   disableInput(true);
 
   try {
-    const aiText = await callAI(sysPrompt, userPrompt);
+    const aiText = await callAI(sysPrompt, userPrompt, null, { maxTokens: 1600, temperature: 0.65 });
     removeLastMessage();
-    const { narrative, state } = parseAIOutput(aiText);
-    return { text: narrative, state };
+    const { narrative, patch, state } = parseAIOutput(aiText);
+    return { text: narrative, patch: patch || state, state };
   } catch (err) {
     removeLastMessage();
-    appendMessage('memory-ref', `❌ AI 调用失败：${err.message}`);
     disableInput(false);
+    const isTimeout = /超时未响应/.test(err.message);
+    if (isTimeout) {
+      // 超时不做 mock 降级：mock 会静默改写叙事却不触碰 memory，容易让玩家误以为世界正常推进
+      appendMessage('memory-ref', `⏱️ ${err.message}`);
+      return { text: null, state: null };
+    }
+    appendMessage('memory-ref', `❌ AI 调用失败：${err.message}`);
     // 降级到 mockAI（只回复，不改变记忆）
     appendMessage('memory-ref', '🔄 降级到本地 Mock AI……');
     return mockAI(input, memory);
@@ -2190,6 +2385,50 @@ async function submitAction() {
   _memoryStack.push(JSON.parse(JSON.stringify(memory)));
   saveStack(); // 持久化撤回栈，刷新页面后仍可用
 
+  // 2.5 联网补全（后台自动，不对玩家暴露）
+  //    触发条件：AI 标记的 facts_cache.pending / 或检测到当前场景涉及知名IP
+  const autoTriggers = ['宝可梦', 'Pokémon', '神奇宝贝', '口袋妖怪', '数码宝贝', '海贼王', '火影忍者',
+    '鬼灭之刃', '龙珠', 'Fate', '型月', '东方Project', '原神', '崩坏', '明日方舟', '最终幻想',
+    '塞尔达', '勇者斗恶龙', '怪物猎人', '艾尔登法环', '巫师', '指环王', '哈利波特', '漫威',
+    'DC', '战锤', '克苏鲁', 'SCP', '三体', '攻壳机动队', '星际牛仔', 'EVA', '高达',
+    'JOJO', '死神', '银魂', '全职猎人', '钢之炼金术师', '命运石之门', '寒蝉'];
+  const memoryNeedsLookup = memory.facts_cache?.pending || [];
+  const lookupTargets = [...memoryNeedsLookup];
+  // 检测当前世界是否涉及上述IP（从世界设定原文或已知字段匹配）
+  const worldText = JSON.stringify(memory || '');
+  for (const ip of autoTriggers) {
+    if (worldText.includes(ip)) {
+      const key = ip.toLowerCase().slice(0, 20);
+      if (!memory.facts_cache?.entries?.[key]) lookupTargets.push(ip);
+      break; // 一次最多自动检测一个IP
+    }
+  }
+  if (lookupTargets.length > 0) {
+    const results = [];
+    for (const q of lookupTargets.slice(0, 2)) {
+      try {
+        const res = await callSearch(q);
+        if (res && res.length > 0) results.push({ query: q, results: res });
+      } catch (e) {
+        console.warn('搜索失败:', q, e.message);
+      }
+    }
+    if (results.length > 0) {
+      if (!memory.facts_cache) memory.facts_cache = { entries: {}, pending: [] };
+      results.forEach(r => {
+        const key = r.query.toLowerCase().slice(0, 30);
+        memory.facts_cache.entries[key] = {
+          query: r.query,
+          results: r.results,
+          fetchedAt: Date.now()
+        };
+      });
+      const lookedUp = new Set(results.map(r => r.query));
+      memory.facts_cache.pending = (memory.facts_cache.pending || []).filter(p => !lookedUp.has(p));
+      saveMemory(memory);
+    }
+  }
+
   // 3. AI 生成
   let result;
   try {
@@ -2204,12 +2443,14 @@ async function submitAction() {
   // 4. 重新启用输入
   disableInput(false);
 
-  // 5. 显示 AI 叙事（空则补默认提示）
-  appendMessage('narrator', `🤖 ${result.text || '世界安静地运转着。你感受到周围的一切都在继续。'}`);
+  // 5. 显示 AI 叙事（超时无输出则不补默认提示，避免让玩家误以为世界正常推进了）
+  if (result.text !== null) {
+    appendMessage('narrator', `🤖 ${result.text || '世界安静地运转着。你感受到周围的一切都在继续。'}`);
+  }
 
   // 6. 更新 Memory
-  if (result.state) {
-    const changed = updateMemory(memory, result.state);
+  if (result.patch || result.state) {
+    const changed = applyStatePatch(memory, result.patch || result.state);
     if (changed) {
       appendMessage('memory-ref', '🧠 记忆已更新');
     }
