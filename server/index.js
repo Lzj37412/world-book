@@ -169,7 +169,7 @@ const server = http.createServer((req, res) => {
   serveStatic(req, res);
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ 记忆沙盒服务器启动 → http://localhost:${PORT}`);
   console.log(`   ${ROOT}`);
 });

@@ -26,8 +26,9 @@ function hasApiKey() {
  */
 async function callSearch(query) {
   const encoded = encodeURIComponent(query.trim());
-  const server = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? '' : 'https://world-book-production.up.railway.app';
+  // 非本地环境 → 用页面所在域名（Zeabur / Railway 等）
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const server = isLocal ? '' : window.location.origin;
   const res = await fetch(`${server}/api/search?q=${encoded}`);
   if (!res.ok) {
     const t = await res.text().catch(() => '');
